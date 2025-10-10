@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      candidates: {
+        Row: {
+          availability: string | null
+          birth_year: number
+          certifications: string[] | null
+          created_at: string
+          experience: string
+          id: string
+          languages: string[] | null
+          location: string | null
+          name: string
+          photo: string | null
+          presentation: string
+          specialties: string[]
+          updated_at: string
+        }
+        Insert: {
+          availability?: string | null
+          birth_year: number
+          certifications?: string[] | null
+          created_at?: string
+          experience: string
+          id?: string
+          languages?: string[] | null
+          location?: string | null
+          name: string
+          photo?: string | null
+          presentation: string
+          specialties: string[]
+          updated_at?: string
+        }
+        Update: {
+          availability?: string | null
+          birth_year?: number
+          certifications?: string[] | null
+          created_at?: string
+          experience?: string
+          id?: string
+          languages?: string[] | null
+          location?: string | null
+          name?: string
+          photo?: string | null
+          presentation?: string
+          specialties?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

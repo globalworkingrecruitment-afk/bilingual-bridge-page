@@ -30,8 +30,8 @@ const Index = () => {
     const filtered = mockCandidates.filter(candidate => 
       candidate.name.toLowerCase().includes(lowerQuery) ||
       candidate.specialties.some(s => s.toLowerCase().includes(lowerQuery)) ||
-      candidate.location.toLowerCase().includes(lowerQuery) ||
-      candidate.languages.some(l => l.toLowerCase().includes(lowerQuery)) ||
+      (candidate.location && candidate.location.toLowerCase().includes(lowerQuery)) ||
+      (candidate.languages && candidate.languages.some(l => l.toLowerCase().includes(lowerQuery))) ||
       candidate.experience.toLowerCase().includes(lowerQuery)
     );
     
@@ -59,7 +59,7 @@ const Index = () => {
           </div>
           
           <CandidateSearch onSearch={handleSearch} n8nWebhookUrl={n8nWebhook} />
-          <CandidatesSection candidates={filteredCandidates} />
+          <CandidatesSection candidates={filteredCandidates} language={language} content={content} />
         </div>
       </section>
       

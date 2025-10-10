@@ -1,60 +1,73 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Candidate } from "@/types/candidate";
 import { CandidateCard } from "./CandidateCard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface CandidatesSectionProps {
   candidates: Candidate[];
+  language: "en" | "no";
+  content: any;
 }
 
-export const CandidatesSection = ({ candidates }: CandidatesSectionProps) => {
-  // Agrupar candidatos automáticamente por especialidades
-  const groupedCandidates = useMemo(() => {
-    const groups: Record<string, Candidate[]> = {};
-    
+export const CandidatesSection = ({ candidates, language, content }: CandidatesSectionProps) => {
+  const [selectedTab, setSelectedTab] = useState<string>("all");
+
+  // Get all unique specialties
+  const specialties = useMemo(() => {
+    const allSpecialties = new Set<string>();
     candidates.forEach((candidate) => {
       candidate.specialties.forEach((specialty) => {
-        if (!groups[specialty]) {
-          groups[specialty] = [];
-        }
-        if (!groups[specialty].find(c => c.id === candidate.id)) {
-          groups[specialty].push(candidate);
-        }
+        allSpecialties.add(specialty);
       });
     });
-    
-    return groups;
+    return Array.from(allSpecialties).sort();
   }, [candidates]);
 
-  const specialties = Object.keys(groupedCandidates).sort();
+  // Filter candidates by selected specialty
+  const filteredCandidates = useMemo(() => {
+    if (selectedTab === "all") {
+      return candidates;
+    }
+    return candidates.filter((candidate) =>
+      candidate.specialties.includes(selectedTab)
+    );
+  }, [candidates, selectedTab]);
 
   if (candidates.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg text-muted-foreground">No se encontraron candidatos</p>
+        <p className="text-lg text-muted-foreground">{content.candidates.noResults}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-16">
-      {specialties.map((specialty) => (
-        <div key={specialty} className="scroll-mt-24">
-          <div className="mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+    <div className="space-y-8">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+        <TabsList className="w-full flex flex-wrap h-auto gap-2 bg-card p-2">
+          <TabsTrigger value="all" className="flex-1 min-w-[120px]">
+            {content.candidates.allSpecialties}
+          </TabsTrigger>
+          {specialties.map((specialty) => (
+            <TabsTrigger key={specialty} value={specialty} className="flex-1 min-w-[120px]">
               {specialty}
-            </h2>
-            <p className="text-muted-foreground">
-              {groupedCandidates[specialty].length} {groupedCandidates[specialty].length === 1 ? 'profesional disponible' : 'profesionales disponibles'}
-            </p>
-          </div>
-          
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={selectedTab} className="mt-8">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {groupedCandidates[specialty].map((candidate) => (
-              <CandidateCard key={candidate.id} candidate={candidate} />
+            {filteredCandidates.map((candidate) => (
+              <CandidateCard 
+                key={candidate.id} 
+                candidate={candidate} 
+                language={language}
+                content={content}
+              />
             ))}
           </div>
-        </div>
-      ))}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

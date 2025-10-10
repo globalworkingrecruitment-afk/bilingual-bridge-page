@@ -1,11 +1,13 @@
 export interface Candidate {
   id: string;
   name: string;
-  photo: string;
-  specialties: string[];
+  photo: string | null;
   experience: string;
-  availability: string;
-  languages: string[];
-  certifications: string[];
-  location: string;
+  birth_year: number;
+  presentation: string;
+  specialties: string[];
+  availability: string | null;
+  languages: string[] | null;
+  certifications: string[] | null;
+  location: string | null;
 }
