@@ -7,9 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 interface CandidateSearchProps {
   onSearch: (query: string) => void;
   n8nWebhookUrl?: string;
+  placeholder?: string;
+  searchLabel?: string;
 }
 
-export const CandidateSearch = ({ onSearch, n8nWebhookUrl }: CandidateSearchProps) => {
+export const CandidateSearch = ({ onSearch, n8nWebhookUrl, placeholder, searchLabel }: CandidateSearchProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -51,7 +53,7 @@ export const CandidateSearch = ({ onSearch, n8nWebhookUrl }: CandidateSearchProp
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
           <Input
             type="text"
-            placeholder="Buscar por especialidad, ubicación, idioma..."
+            placeholder={placeholder ?? "Buscar por nombre o experiencia"}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -63,7 +65,7 @@ export const CandidateSearch = ({ onSearch, n8nWebhookUrl }: CandidateSearchProp
           disabled={isLoading}
           className="h-12 px-8 bg-gradient-to-r from-primary to-primary-glow"
         >
-          {isLoading ? "Buscando..." : "Buscar"}
+          {isLoading ? (searchLabel ?? "Buscar") + "..." : searchLabel ?? "Buscar"}
         </Button>
       </div>
     </div>

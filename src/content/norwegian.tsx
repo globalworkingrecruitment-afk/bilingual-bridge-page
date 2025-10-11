@@ -23,17 +23,27 @@ export const norwegianContent = {
   candidates: {
     title: "Tilgjengelige Fagfolk",
     subtitle: "Finn den perfekte helsepersonell til teamet ditt",
-    allSpecialties: "Alle Spesialiteter",
-    noResults: "Ingen kandidater funnet"
+    noResults: "Ingen kandidater funnet",
+    filters: {
+      title: "Utforsk",
+      all: "Alle profiler",
+      groups: {
+        domicilio_geriatrico: "Hjemme- og geriatrisk pleie",
+        hospitalario: "Sykehusomsorg",
+        urgencias: "Akutt- og beredskapstjenester",
+      },
+    }
   },
   search: {
-    placeholder: "Søk etter navn, spesialitet, sted...",
+    placeholder: "Søk etter navn, erfaring eller presentasjonsbrev...",
     button: "Søk"
   },
   candidateCard: {
-    availability: "Tilgjengelighet",
     age: "Alder",
-    yearsOld: "år"
+    yearsOld: "år",
+    coverLetter: "Presentasjonsbrev",
+    experiences: "Medisinsk erfaring",
+    noExperience: "Ingen registrert medisinsk erfaring ennå"
   },
   auth: {
     title: "Tilgang til Kontoen Din",
@@ -41,7 +51,7 @@ export const norwegianContent = {
     emailLabel: "E-post",
     emailPlaceholder: "din@epost.com",
     loginButton: "Send Magisk Lenke",
-    backToHome: "Tilbake til Hjem",
+    backToHome: "Utforsk uten innlogging",
     checkEmail: "Sjekk e-posten din for den magiske lenken for å logge inn.",
     error: "Kunne ikke sende magisk lenke. Vennligst prøv igjen."
   },

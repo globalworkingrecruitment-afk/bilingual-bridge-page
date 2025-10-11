@@ -28,7 +28,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/browse`,
         },
       });
 
@@ -58,7 +58,7 @@ const Auth = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/browse")}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />

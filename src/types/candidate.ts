@@ -1,13 +1,15 @@
+export type CareSetting = "domicilio_geriatrico" | "hospitalario" | "urgencias";
+
+export interface CandidateExperience {
+  title: string;
+  duration: string;
+  care_setting: CareSetting;
+}
+
 export interface Candidate {
   id: string;
-  name: string;
-  photo: string | null;
-  experience: string;
+  full_name: string;
   birth_year: number;
-  presentation: string;
-  specialties: string[];
-  availability: string | null;
-  languages: string[] | null;
-  certifications: string[] | null;
-  location: string | null;
+  cover_letter: string;
+  experiences: CandidateExperience[];
 }

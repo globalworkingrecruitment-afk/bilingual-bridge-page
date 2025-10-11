@@ -23,17 +23,27 @@ export const englishContent = {
   candidates: {
     title: "Available Professionals",
     subtitle: "Find the perfect healthcare professional for your team",
-    allSpecialties: "All Specialties",
-    noResults: "No candidates found"
+    noResults: "No candidates found",
+    filters: {
+      title: "Browse",
+      all: "All profiles",
+      groups: {
+        domicilio_geriatrico: "Home & Geriatric Care",
+        hospitalario: "Hospital Care",
+        urgencias: "Emergency & Critical Care",
+      },
+    }
   },
   search: {
-    placeholder: "Search by name, specialty, location...",
+    placeholder: "Search by name, experience or cover letter...",
     button: "Search"
   },
   candidateCard: {
-    availability: "Availability",
     age: "Age",
-    yearsOld: "years old"
+    yearsOld: "years old",
+    coverLetter: "Cover Letter",
+    experiences: "Medical Experience",
+    noExperience: "No recorded medical experience yet"
   },
   auth: {
     title: "Access Your Account",
@@ -41,7 +51,7 @@ export const englishContent = {
     emailLabel: "Email",
     emailPlaceholder: "your@email.com",
     loginButton: "Send Magic Link",
-    backToHome: "Back to Home",
+    backToHome: "Browse without signing in",
     checkEmail: "Check your email for the magic link to sign in.",
     error: "Could not send magic link. Please try again."
   },
