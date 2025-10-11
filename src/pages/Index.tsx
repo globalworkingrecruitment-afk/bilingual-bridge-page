@@ -1,47 +1,95 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
 import { CandidateSearch } from "@/components/CandidateSearch";
 import { CandidatesSection } from "@/components/CandidatesSection";
+import { ExperienceFilters } from "@/components/ExperienceFilters";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
-import { Candidate } from "@/types/candidate";
+import { Candidate, CareSetting } from "@/types/candidate";
 
 const Index = () => {
   const [language, setLanguage] = useState<"en" | "no">("en");
-  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>(mockCandidates);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
   const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
-  
+
   const content = language === "en" ? englishContent : norwegianContent;
-  
+
   const toggleLanguage = () => {
     setLanguage(prev => prev === "en" ? "no" : "en");
   };
 
   const handleSearch = (query: string) => {
-    if (!query.trim()) {
-      setFilteredCandidates(mockCandidates);
-      return;
-    }
-    
-    const lowerQuery = query.toLowerCase();
-    const filtered = mockCandidates.filter(candidate => 
-      candidate.name.toLowerCase().includes(lowerQuery) ||
-      candidate.specialties.some(s => s.toLowerCase().includes(lowerQuery)) ||
-      (candidate.location && candidate.location.toLowerCase().includes(lowerQuery)) ||
-      (candidate.languages && candidate.languages.some(l => l.toLowerCase().includes(lowerQuery))) ||
-      candidate.experience.toLowerCase().includes(lowerQuery)
-    );
-    
-    setFilteredCandidates(filtered);
+    setSearchQuery(query.trim());
+  };
+
+  const experienceSections = useMemo(() => {
+    const counts = new Map<CareSetting, Set<string>>([
+      ["domicilio_geriatrico", new Set()],
+      ["hospitalario", new Set()],
+      ["urgencias", new Set()],
+    ]);
+
+    mockCandidates.forEach(candidate => {
+      candidate.experiences.forEach(experience => {
+        const bucket = counts.get(experience.care_setting);
+        bucket?.add(candidate.id);
+      });
+    });
+
+    const order: CareSetting[] = [
+      "domicilio_geriatrico",
+      "hospitalario",
+      "urgencias",
+    ];
+
+    return order
+      .map(setting => ({
+        id: setting,
+        label: content.candidates.filters.groups[setting],
+        count: counts.get(setting)?.size ?? 0,
+      }))
+      .filter(section => section.count > 0);
+  }, [content.candidates.filters.groups]);
+
+  const filteredCandidates = useMemo(() => {
+    const normalizedQuery = searchQuery.toLowerCase();
+
+    return mockCandidates.filter((candidate: Candidate) => {
+      const matchesExperience = selectedSetting
+        ? candidate.experiences.some(experience => experience.care_setting === selectedSetting)
+        : true;
+
+      if (!matchesExperience) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return (
+        candidate.full_name.toLowerCase().includes(normalizedQuery) ||
+        candidate.cover_letter.toLowerCase().includes(normalizedQuery) ||
+        candidate.experiences.some(experience =>
+          experience.title.toLowerCase().includes(normalizedQuery) ||
+          experience.duration.toLowerCase().includes(normalizedQuery)
+        )
+      );
+    });
+  }, [searchQuery, selectedSetting]);
+
+  const handleSelectExperience = (setting: CareSetting | null) => {
+    setSelectedSetting(prev => (prev === setting ? null : setting));
   };
 
   return (
     <div className="min-h-screen bg-background">
       <LanguageToggle language={language} onToggle={toggleLanguage} />
-      
+
       <Hero content={content.hero} />
       <Stats content={content.stats} />
       
@@ -58,8 +106,19 @@ const Index = () => {
             </p>
           </div>
           
-          <CandidateSearch onSearch={handleSearch} n8nWebhookUrl={n8nWebhook} />
-          <CandidatesSection candidates={filteredCandidates} language={language} content={content} />
+          <CandidateSearch
+            onSearch={handleSearch}
+            n8nWebhookUrl={n8nWebhook}
+            placeholder={content.search.placeholder}
+            searchLabel={content.search.button}
+          />
+          <ExperienceFilters
+            sections={experienceSections}
+            selectedSection={selectedSetting}
+            onSelect={handleSelectExperience}
+            labels={content.candidates.filters}
+          />
+          <CandidatesSection candidates={filteredCandidates} content={content} />
         </div>
       </section>
       
