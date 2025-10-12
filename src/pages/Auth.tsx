@@ -43,17 +43,17 @@ const Auth = () => {
         window.history.replaceState(
           {},
           document.title,
-          `${window.location.origin}/#/browse`
+          `${window.location.origin}/#/`
         );
 
-        navigate("/browse", { replace: true });
+        navigate("/", { replace: true });
         return;
       }
 
       const { data } = await supabase.auth.getSession();
 
       if (isMounted && data.session) {
-        navigate("/browse", { replace: true });
+        navigate("/", { replace: true });
       }
     };
 
@@ -72,7 +72,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/#/browse`,
+          emailRedirectTo: `${window.location.origin}/#/auth`,
         },
       });
 
@@ -102,7 +102,7 @@ const Auth = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/browse")}
+              onClick={() => navigate("/")}
               className="gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
