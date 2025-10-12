@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,52 @@ const Auth = () => {
   const [language, setLanguage] = useState<"en" | "no">("en");
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const content = language === "en" ? englishContent : norwegianContent;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleRedirectSession = async () => {
+      const hash = window.location.hash;
+
+      if (hash.includes("access_token")) {
+        const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+
+        if (error) {
+          toast({
+            title: content.auth.error,
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!isMounted) return;
+
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/#/browse`
+        );
+
+        navigate("/browse", { replace: true });
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+
+      if (isMounted && data.session) {
+        navigate("/browse", { replace: true });
+      }
+    };
+
+    handleRedirectSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [content.auth.error, navigate, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
