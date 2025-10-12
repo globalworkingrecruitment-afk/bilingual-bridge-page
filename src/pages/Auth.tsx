@@ -6,8 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { englishContent } from "@/content/english";
+import {
+  ADMIN_PASSWORD,
+  ADMIN_USERNAME,
+  getActivePortalUser,
+  getAdminSession,
+  getPortalUsers,
+  logPortalAccess,
+  setActivePortalUser,
+  setAdminSession,
 import { norwegianContent } from "@/content/norwegian";
 import {
   getActivePortalUser,
@@ -29,6 +37,57 @@ const Auth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const content = englishContent;
+
+  useEffect(() => {
+    const updateUsers = () => setHasUsers(getPortalUsers().length > 0);
+
+    setCurrentHost(getCurrentHost());
+    updateUsers();
+
+    window.addEventListener("storage", updateUsers);
+
+    return () => {
+      window.removeEventListener("storage", updateUsers);
+    };
+  }, []);
+
+  useEffect(() => {
+    const adminActive = getAdminSession();
+    if (adminActive) {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    const activeUser = getActivePortalUser();
+    if (activeUser) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
+  const domainMatches = currentHost === APP_DOMAIN;
+
+  const domainHelper = !domainMatches ? (
+    !ALLOW_DOMAIN_FALLBACK ? (
+      <Alert variant="destructive" className="mb-4">
+        <AlertTitle>{content.auth.domainErrorTitle}</AlertTitle>
+        <AlertDescription>
+          {content.auth.domainErrorMessage
+            .replace("{{domain}}", APP_DOMAIN)
+            .replace("{{current}}", currentHost || "")}
+        </AlertDescription>
+      </Alert>
+    ) : (
+      <Alert className="mb-4">
+        <AlertTitle>{content.auth.domainWarningTitle}</AlertTitle>
+        <AlertDescription>
+          {content.auth.domainWarningMessage
+            .replace("{{domain}}", APP_DOMAIN)
+            .replace("{{current}}", currentHost || "")}
+        </AlertDescription>
+      </Alert>
+    )
+  ) : null;
   const content = language === "en" ? englishContent : norwegianContent;
 
   useEffect(() => {
@@ -80,6 +139,33 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const normalizedUsername = username.trim();
+      const normalizedPassword = password.trim();
+
+      const isAdmin =
+        normalizedUsername === ADMIN_USERNAME && normalizedPassword === ADMIN_PASSWORD;
+
+      if (isAdmin) {
+        setAdminSession(true);
+        toast({
+          title: content.auth.adminSuccessTitle,
+          description: content.auth.adminSuccessDescription,
+        });
+
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      if (!validatePortalUser(normalizedUsername, normalizedPassword)) {
+        throw new Error(content.auth.invalidCredentials);
+      }
+
+      setActivePortalUser(normalizedUsername);
+      logPortalAccess(normalizedUsername);
+
+      toast({
+        title: content.auth.successTitle,
+        description: content.auth.successDescription.replace("{{user}}", normalizedUsername),
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {

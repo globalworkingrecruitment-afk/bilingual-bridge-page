@@ -47,7 +47,7 @@ export const englishContent = {
   },
   auth: {
     title: "Access the Professionals Portal",
-    subtitle: "Sign in with the credentials provided by the administrator.",
+    subtitle: "Sign in with the credentials provided by Global Working.",
     usernameLabel: "Username",
     usernamePlaceholder: "your.username",
     passwordLabel: "Password",
@@ -56,6 +56,8 @@ export const englishContent = {
     backToHome: "Return to the homepage",
     successTitle: "Welcome back!",
     successDescription: "{{user}}, you now have access to the main experience.",
+    adminSuccessTitle: "Administrator access",
+    adminSuccessDescription: "You will be redirected to the management panel.",
     error: "Login failed",
     genericError: "We could not complete your login. Please try again.",
     invalidCredentials: "The username or password is incorrect.",
