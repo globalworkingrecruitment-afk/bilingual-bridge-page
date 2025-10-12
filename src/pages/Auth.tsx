@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +9,23 @@ import { ArrowLeft } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
+import {
+  getActivePortalUser,
+  getPortalUsers,
+  logPortalAccess,
+  setActivePortalUser,
+  validatePortalUser,
+} from "@/lib/portalAuth";
+import { ALLOW_DOMAIN_FALLBACK, APP_DOMAIN, getCurrentHost } from "@/lib/domainConfig";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState<"en" | "no">("en");
+  const [currentHost, setCurrentHost] = useState<string>("");
+  const [hasUsers, setHasUsers] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -76,15 +87,20 @@ const Auth = () => {
         },
       });
 
-      if (error) throw error;
+      const sanitizedUsername = username.trim();
+      setActivePortalUser(sanitizedUsername);
+      logPortalAccess(sanitizedUsername);
 
       toast({
-        title: content.auth.checkEmail,
+        title: content.auth.successTitle,
+        description: content.auth.successDescription.replace("{{user}}", sanitizedUsername),
       });
+
+      navigate("/", { replace: true });
     } catch (error: any) {
       toast({
         title: content.auth.error,
-        description: error.message,
+        description: error.message ?? content.auth.genericError,
         variant: "destructive",
       });
     } finally {
@@ -95,7 +111,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
       <LanguageToggle language={language} onToggle={() => setLanguage(prev => prev === "en" ? "no" : "en")} />
-      
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2 mb-4">
@@ -117,17 +133,37 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {domainHelper}
+          {!hasUsers && (
+            <Alert className="mb-4">
+              <AlertTitle>{content.auth.missingUsersTitle}</AlertTitle>
+              <AlertDescription>{content.auth.missingUsersMessage}</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{content.auth.emailLabel}</Label>
+              <Label htmlFor="username">{content.auth.usernameLabel}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder={content.auth.emailPlaceholder}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                placeholder={content.auth.usernamePlaceholder}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
+                autoComplete="username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{content.auth.passwordLabel}</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder={content.auth.passwordPlaceholder}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                autoComplete="current-password"
               />
             </div>
             <Button

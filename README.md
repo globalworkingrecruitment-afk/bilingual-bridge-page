@@ -4,6 +4,24 @@
 
 **URL**: https://lovable.dev/projects/a200a069-d067-446d-9d69-cedc4064e8a1
 
+## Administración de accesos y dominios
+
+- El panel de administración vive en `/#/admin` y está protegido por el usuario `admin123` y la contraseña `GWorking`.
+- Desde ese panel puedes crear, revisar o eliminar las credenciales que darán acceso a la página principal.
+- Cada inicio de sesión en la página principal queda registrado y se muestra en la tarjeta de "Últimos accesos" del panel.
+- El dominio recomendado para el panel es `admin.<tu-dominio>` y el dominio público para la página principal es `<tu-dominio>`.
+- Configura las variables de entorno si necesitas separar los dominios:
+
+  ```sh
+  VITE_ADMIN_DOMAIN=admin.mi-dominio.com
+  VITE_APP_DOMAIN=mi-dominio.com
+  # Pon a false si quieres bloquear el uso de un dominio distinto al configurado
+  VITE_ALLOW_DOMAIN_FALLBACK=true
+  ```
+
+- Cuando visites la página desde un dominio distinto al esperado verás un aviso explicando cómo corregirlo.
+- El formulario de acceso (`/#/auth`) ahora valida usuarios y contraseñas creadas por el administrador; ya no se envían magic links.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
