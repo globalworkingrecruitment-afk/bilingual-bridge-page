@@ -32,58 +32,60 @@ const Auth = () => {
   const content = language === "en" ? englishContent : norwegianContent;
 
   useEffect(() => {
-    const updateUsers = () => setHasUsers(getPortalUsers().length > 0);
+    let isMounted = true;
 
-    setCurrentHost(getCurrentHost());
-    updateUsers();
+    const handleRedirectSession = async () => {
+      const hash = window.location.hash;
 
-    window.addEventListener("storage", updateUsers);
+      if (hash.includes("access_token")) {
+        const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+
+        if (error) {
+          toast({
+            title: content.auth.error,
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!isMounted) return;
+
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/#/`
+        );
+
+        navigate("/", { replace: true });
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+
+      if (isMounted && data.session) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    handleRedirectSession();
 
     return () => {
-      window.removeEventListener("storage", updateUsers);
+      isMounted = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const activeUser = getActivePortalUser();
-
-    if (activeUser) {
-      navigate("/", { replace: true });
-    }
-  }, [navigate]);
-
-  const domainMatches = currentHost === APP_DOMAIN;
-
-  const domainHelper = !domainMatches ? (
-    !ALLOW_DOMAIN_FALLBACK ? (
-      <Alert variant="destructive" className="mb-4">
-        <AlertTitle>{content.auth.domainErrorTitle}</AlertTitle>
-        <AlertDescription>
-          {content.auth.domainErrorMessage
-            .replace("{{domain}}", APP_DOMAIN)
-            .replace("{{current}}", currentHost || "")}
-        </AlertDescription>
-      </Alert>
-    ) : (
-      <Alert className="mb-4">
-        <AlertTitle>{content.auth.domainWarningTitle}</AlertTitle>
-        <AlertDescription>
-          {content.auth.domainWarningMessage
-            .replace("{{domain}}", APP_DOMAIN)
-            .replace("{{current}}", currentHost || "")}
-        </AlertDescription>
-      </Alert>
-    )
-  ) : null;
+  }, [content.auth.error, navigate, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (!validatePortalUser(username, password)) {
-        throw new Error(content.auth.invalidCredentials);
-      }
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/#/auth`,
+        },
+      });
 
       const sanitizedUsername = username.trim();
       setActivePortalUser(sanitizedUsername);
