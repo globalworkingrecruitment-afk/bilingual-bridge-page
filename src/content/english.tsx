@@ -46,14 +46,30 @@ export const englishContent = {
     noExperience: "No recorded medical experience yet"
   },
   auth: {
-    title: "Access Your Account",
-    subtitle: "Enter your email to receive a magic link",
-    emailLabel: "Email",
-    emailPlaceholder: "your@email.com",
-    loginButton: "Send Magic Link",
-    backToHome: "Browse without signing in",
-    checkEmail: "Check your email for the magic link to sign in.",
-    error: "Could not send magic link. Please try again."
+    title: "Access the Professionals Portal",
+    subtitle: "Sign in with the credentials provided by the administrator.",
+    usernameLabel: "Username",
+    usernamePlaceholder: "your.username",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Enter your password",
+    loginButton: "Sign in",
+    backToHome: "Return to the homepage",
+    successTitle: "Welcome back!",
+    successDescription: "{{user}}, you now have access to the main experience.",
+    error: "Login failed",
+    genericError: "We could not complete your login. Please try again.",
+    invalidCredentials: "The username or password is incorrect.",
+    missingUsersTitle: "No credentials available",
+    missingUsersMessage: "Ask the administrator to create a username and password before trying again.",
+    domainWarningTitle: "Recommended domain",
+    domainWarningMessage: "The public portal should run on {{domain}} but you are visiting {{current}}.",
+    domainErrorTitle: "Incorrect domain",
+    domainErrorMessage: "You must open this page from {{domain}}. Current domain: {{current}}.",
+  },
+  portal: {
+    signedInAs: "Signed in as",
+    logout: "Sign out",
+    redirecting: "Redirecting you to the login page...",
   },
   footer: {
     rights: "All rights reserved"
