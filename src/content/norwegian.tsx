@@ -46,14 +46,30 @@ export const norwegianContent = {
     noExperience: "Ingen registrert medisinsk erfaring ennå"
   },
   auth: {
-    title: "Tilgang til Kontoen Din",
-    subtitle: "Skriv inn e-posten din for å motta en magisk lenke",
-    emailLabel: "E-post",
-    emailPlaceholder: "din@epost.com",
-    loginButton: "Send Magisk Lenke",
-    backToHome: "Utforsk uten innlogging",
-    checkEmail: "Sjekk e-posten din for den magiske lenken for å logge inn.",
-    error: "Kunne ikke sende magisk lenke. Vennligst prøv igjen."
+    title: "Tilgang til profesjonellportalen",
+    subtitle: "Logg inn med brukernavn og passord fra administratoren.",
+    usernameLabel: "Brukernavn",
+    usernamePlaceholder: "ditt.brukernavn",
+    passwordLabel: "Passord",
+    passwordPlaceholder: "Skriv inn passordet ditt",
+    loginButton: "Logg inn",
+    backToHome: "Tilbake til startsiden",
+    successTitle: "Velkommen tilbake!",
+    successDescription: "{{user}}, du har nå tilgang til hovedsiden.",
+    error: "Innlogging mislyktes",
+    genericError: "Vi kunne ikke fullføre innloggingen. Prøv igjen.",
+    invalidCredentials: "Brukernavn eller passord er feil.",
+    missingUsersTitle: "Ingen brukere tilgjengelig",
+    missingUsersMessage: "Be administratoren opprette et brukernavn og passord før du prøver igjen.",
+    domainWarningTitle: "Anbefalt domene",
+    domainWarningMessage: "Portalen bør kjøre på {{domain}}, men du besøker {{current}}.",
+    domainErrorTitle: "Feil domene",
+    domainErrorMessage: "Du må åpne denne siden fra {{domain}}. Gjeldende domene: {{current}}.",
+  },
+  portal: {
+    signedInAs: "Innlogget som",
+    logout: "Logg ut",
+    redirecting: "Sender deg til innloggingssiden...",
   },
   footer: {
     rights: "Alle rettigheter reservert"
