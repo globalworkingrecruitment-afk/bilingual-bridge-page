@@ -5,6 +5,11 @@ const ACCESS_LOGS_KEY = "portal:accessLogs";
 const ACTIVE_USER_KEY = "portal:activeUser";
 const ADMIN_SESSION_KEY = "portal:adminSession";
 
+const DEFAULT_USER = {
+  username: "demo.user",
+  password: "Demo1234",
+};
+
 export const ADMIN_USERNAME = "admin123";
 export const ADMIN_PASSWORD = "GWorking";
 
@@ -41,7 +46,34 @@ const writeStorage = <T,>(key: string, value: T) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
-export const getPortalUsers = (): PortalUser[] => readStorage<PortalUser[]>(USERS_KEY, []);
+const ensureDefaultUser = (users: PortalUser[]): PortalUser[] => {
+  const hasDefaultUser = users.some(
+    (user) => user.username.toLowerCase() === DEFAULT_USER.username.toLowerCase()
+  );
+
+  if (hasDefaultUser) {
+    return users;
+  }
+
+  const defaultUser: PortalUser = {
+    username: DEFAULT_USER.username,
+    password: DEFAULT_USER.password,
+    createdAt: new Date().toISOString(),
+  };
+
+  return [...users, defaultUser];
+};
+
+export const getPortalUsers = (): PortalUser[] => {
+  const storedUsers = readStorage<PortalUser[]>(USERS_KEY, []);
+  const usersWithDefault = ensureDefaultUser(storedUsers);
+
+  if (isBrowser && usersWithDefault.length !== storedUsers.length) {
+    writeStorage(USERS_KEY, usersWithDefault);
+  }
+
+  return usersWithDefault;
+};
 
 export const addPortalUser = (username: string, password: string) => {
   const users = getPortalUsers();
@@ -72,6 +104,10 @@ export const addPortalUser = (username: string, password: string) => {
 };
 
 export const removePortalUser = (username: string) => {
+  if (username.toLowerCase() === DEFAULT_USER.username.toLowerCase()) {
+    throw new Error("No puedes eliminar el usuario de prueba predeterminado.");
+  }
+
   const users = getPortalUsers();
   const filtered = users.filter(
     (user) => user.username.toLowerCase() !== username.toLowerCase()
