@@ -16,6 +16,12 @@ import {
   logPortalAccess,
   setActivePortalUser,
   setAdminSession,
+import { norwegianContent } from "@/content/norwegian";
+import {
+  getActivePortalUser,
+  getPortalUsers,
+  logPortalAccess,
+  setActivePortalUser,
   validatePortalUser,
 } from "@/lib/portalAuth";
 import { ALLOW_DOMAIN_FALLBACK, APP_DOMAIN, getCurrentHost } from "@/lib/domainConfig";
@@ -25,6 +31,7 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState<"en" | "no">("en");
   const [currentHost, setCurrentHost] = useState<string>("");
   const [hasUsers, setHasUsers] = useState<boolean>(false);
   const { toast } = useToast();
@@ -81,6 +88,51 @@ const Auth = () => {
       </Alert>
     )
   ) : null;
+  const content = language === "en" ? englishContent : norwegianContent;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleRedirectSession = async () => {
+      const hash = window.location.hash;
+
+      if (hash.includes("access_token")) {
+        const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+
+        if (error) {
+          toast({
+            title: content.auth.error,
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!isMounted) return;
+
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/#/`
+        );
+
+        navigate("/", { replace: true });
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+
+      if (isMounted && data.session) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    handleRedirectSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [content.auth.error, navigate, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +166,20 @@ const Auth = () => {
       toast({
         title: content.auth.successTitle,
         description: content.auth.successDescription.replace("{{user}}", normalizedUsername),
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/#/auth`,
+        },
+      });
+
+      const sanitizedUsername = username.trim();
+      setActivePortalUser(sanitizedUsername);
+      logPortalAccess(sanitizedUsername);
+
+      toast({
+        title: content.auth.successTitle,
+        description: content.auth.successDescription.replace("{{user}}", sanitizedUsername),
       });
 
       navigate("/", { replace: true });
@@ -130,6 +196,8 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
+      <LanguageToggle language={language} onToggle={() => setLanguage(prev => prev === "en" ? "no" : "en")} />
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-2 mb-4">

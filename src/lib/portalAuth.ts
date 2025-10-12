@@ -48,7 +48,7 @@ export const addPortalUser = (username: string, password: string) => {
   const normalizedUsername = username.trim();
 
   if (!normalizedUsername || !password.trim()) {
-    throw new Error("Please provide a valid username and password.");
+    throw new Error("Debes introducir un usuario y una contraseña válidos.");
   }
 
   const exists = users.some(
@@ -56,7 +56,7 @@ export const addPortalUser = (username: string, password: string) => {
   );
 
   if (exists) {
-    throw new Error("That username already exists.");
+    throw new Error("Ese usuario ya existe.");
   }
 
   const newUser: PortalUser = {

@@ -71,13 +71,13 @@ const Admin = () => {
     event.preventDefault();
 
     if (adminUser !== ADMIN_USERNAME || adminPass !== ADMIN_PASSWORD) {
-      toast.error("Incorrect administrator credentials.");
+      toast.error("Credenciales de administrador incorrectas.");
       return;
     }
 
     setAdminSession(true);
     setIsAuthenticated(true);
-    toast.success("Administrator access granted.");
+    toast.success("Has accedido al panel de administración.");
   };
 
   const handleAdminLogout = () => {
@@ -95,34 +95,34 @@ const Admin = () => {
       setUsers(getPortalUsers());
       setNewUser("");
       setNewPassword("");
-      toast.success("New portal credential saved.");
+      toast.success("Nuevo acceso creado correctamente.");
     } catch (error: any) {
-      toast.error(error.message ?? "We could not create the credential.");
+      toast.error(error.message ?? "No se pudo crear el acceso.");
     }
   };
 
   const handleRemoveUser = (username: string) => {
     removePortalUser(username);
     setUsers(getPortalUsers());
-    toast.success(`The user ${username} has been removed.`);
+    toast.success(`El usuario ${username} ha sido eliminado.`);
   };
 
   const domainHelper = !domainMatches ? (
     !ALLOW_DOMAIN_FALLBACK ? (
       <Alert variant="destructive" className="mb-4">
-        <AlertTitle>Incorrect domain</AlertTitle>
+        <AlertTitle>Dominio incorrecto</AlertTitle>
         <AlertDescription>
-          Open the admin panel from <strong>{ADMIN_DOMAIN}</strong>. You are currently using
-          <strong> {currentHost || "an unknown domain"}</strong>.
+          Debes abrir este panel desde <strong>{ADMIN_DOMAIN}</strong>. Estás usando
+          <strong> {currentHost || "un dominio desconocido"}</strong>.
         </AlertDescription>
       </Alert>
     ) : (
       <Alert className="mb-4">
-        <AlertTitle>Recommended domain</AlertTitle>
+        <AlertTitle>Dominio recomendado</AlertTitle>
         <AlertDescription>
-          This panel is intended to run on <strong>{ADMIN_DOMAIN}</strong>. You are currently using
-          <strong> {currentHost || "an unknown domain"}</strong>. Configure DNS or your hosts file to separate the
-          admin domain.
+          Este panel está pensado para ejecutarse en <strong>{ADMIN_DOMAIN}</strong>. Actualmente estás usando
+          <strong> {currentHost || "un dominio desconocido"}</strong>. Configura el DNS o tu archivo hosts para
+          separar el dominio de administración.
         </AlertDescription>
       </Alert>
     )
@@ -133,14 +133,14 @@ const Admin = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-950/90 p-6">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Administration Panel</CardTitle>
-            <CardDescription>Sign in with the administrator credentials.</CardDescription>
+            <CardTitle>Panel de Administración</CardTitle>
+            <CardDescription>Accede con las credenciales de administrador.</CardDescription>
           </CardHeader>
           <CardContent>
             {domainHelper}
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="admin-user">Username</Label>
+                <Label htmlFor="admin-user">Usuario</Label>
                 <Input
                   id="admin-user"
                   value={adminUser}
@@ -150,7 +150,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="admin-pass">Password</Label>
+                <Label htmlFor="admin-pass">Contraseña</Label>
                 <Input
                   id="admin-pass"
                   type="password"
@@ -161,7 +161,7 @@ const Admin = () => {
                 />
               </div>
               <Button type="submit" className="w-full">
-                Sign in as administrator
+                Entrar como administrador
               </Button>
             </form>
           </CardContent>
@@ -175,17 +175,17 @@ const Admin = () => {
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Administration Panel</h1>
+            <h1 className="text-3xl font-bold">Panel de Administración</h1>
             <p className="text-slate-300">
-              Manage portal credentials and review who accessed the main page.
+              Gestiona los accesos al portal principal y revisa la actividad de inicio de sesión.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">Current domain: {currentHost || "unknown"}</Badge>
+            <Badge variant="secondary">Dominio actual: {currentHost || "desconocido"}</Badge>
             <Button variant="outline" onClick={handleAdminLogout}>
-              Sign out
+              Cerrar sesión
             </Button>
-            <Button variant="secondary" onClick={() => window.open(publicUrl, "_blank")}>Open main portal</Button>
+            <Button variant="secondary" onClick={() => window.open(publicUrl, "_blank")}>Abrir portal principal</Button>
           </div>
         </header>
 
@@ -194,39 +194,39 @@ const Admin = () => {
         <section>
           <Card>
             <CardHeader>
-              <CardTitle>Create access for the main portal</CardTitle>
+              <CardTitle>Crear acceso para la página principal</CardTitle>
               <CardDescription>
-                Add a username and password that your partners will use on the public domain ({publicDomain}).
+                Introduce un nombre de usuario y contraseña que usarán en el dominio público ({publicDomain}).
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateUser} className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-1">
-                  <Label htmlFor="new-user">Username</Label>
+                  <Label htmlFor="new-user">Usuario</Label>
                   <Input
                     id="new-user"
                     value={newUser}
                     onChange={(event) => setNewUser(event.target.value)}
                     autoComplete="off"
-                    placeholder="user.example"
+                    placeholder="usuario.ejemplo"
                     required
                   />
                 </div>
                 <div className="space-y-2 md:col-span-1">
-                  <Label htmlFor="new-pass">Password</Label>
+                  <Label htmlFor="new-pass">Contraseña</Label>
                   <Input
                     id="new-pass"
                     type="password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                     autoComplete="new-password"
-                    placeholder="Secure password"
+                    placeholder="Contraseña segura"
                     required
                   />
                 </div>
                 <div className="flex items-end md:col-span-1">
                   <Button type="submit" className="w-full">
-                    Save credential
+                    Guardar acceso
                   </Button>
                 </div>
               </form>
@@ -237,21 +237,21 @@ const Admin = () => {
         <section className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Available credentials</CardTitle>
-              <CardDescription>Users allowed to reach the main portal.</CardDescription>
+              <CardTitle>Accesos disponibles</CardTitle>
+              <CardDescription>Usuarios autorizados para el portal principal.</CardDescription>
             </CardHeader>
             <CardContent>
               {users.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  There are no credentials yet. Create at least one user so they can sign in.
+                  Aún no has creado accesos. Genera al menos un usuario para que puedan iniciar sesión.
                 </p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Creado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -270,7 +270,7 @@ const Admin = () => {
                             size="sm"
                             onClick={() => handleRemoveUser(user.username)}
                           >
-                            Remove
+                            Eliminar
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -283,13 +283,14 @@ const Admin = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Recent access</CardTitle>
-              <CardDescription>Activity log for users entering the main page.</CardDescription>
+              <CardTitle>Últimos accesos</CardTitle>
+              <CardDescription>Historial de usuarios que han entrado en la página principal.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 max-h-80 overflow-y-auto">
               {logs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  There are no access records yet. Once a user signs in from the public domain you will see it here.
+                  Aún no hay registros de acceso. Cuando un usuario inicie sesión desde el dominio público aparecerá
+                  aquí.
                 </p>
               ) : (
                 logs.map((log, index) => (
