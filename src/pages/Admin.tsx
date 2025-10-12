@@ -102,9 +102,13 @@ const Admin = () => {
   };
 
   const handleRemoveUser = (username: string) => {
-    removePortalUser(username);
-    setUsers(getPortalUsers());
-    toast.success(`El usuario ${username} ha sido eliminado.`);
+    try {
+      removePortalUser(username);
+      setUsers(getPortalUsers());
+      toast.success(`El usuario ${username} ha sido eliminado.`);
+    } catch (error: any) {
+      toast.error(error?.message ?? "No se pudo eliminar el usuario.");
+    }
   };
 
   const domainHelper = !domainMatches ? (
