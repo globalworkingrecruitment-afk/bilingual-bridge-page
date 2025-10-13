@@ -11,7 +11,7 @@ import { norwegianContent } from "@/content/norwegian";
 import { useAuth } from "@/context/AuthContext";
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState<"en" | "no">("en");
@@ -36,7 +36,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
+      const user = await login(username, password);
 
       toast({
         title: user.role === "admin" ? content.auth.successAdmin : content.auth.successUser,
@@ -89,13 +89,13 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2 text-left">
-              <Label htmlFor="email">{content.auth.emailLabel}</Label>
+              <Label htmlFor="username">{content.auth.usernameLabel}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder={content.auth.emailPlaceholder}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                id="username"
+                type="text"
+                placeholder={content.auth.usernamePlaceholder}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
                 required
                 disabled={loading}
               />
