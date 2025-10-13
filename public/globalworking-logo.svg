@@ -1,0 +1,18 @@
+<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Global Working Logo</title>
+  <desc id="desc">Corporate logo with an orange arc and the text GlobalWorking with the tagline Work abroad Live abroad.</desc>
+  <defs>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#003A70" />
+      <stop offset="100%" stop-color="#1C75BC" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="200" fill="transparent" />
+  <path d="M120 70 Q400 -40 680 70" stroke="#F26F21" stroke-width="12" fill="none" stroke-linecap="round" />
+  <text x="120" y="125" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="72" fill="url(#textGradient)">
+    Global<tspan font-weight="700">Working</tspan>
+  </text>
+  <text x="205" y="160" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="26" fill="#1C75BC" letter-spacing="4">
+    Work abroad   ·   Live abroad
+  </text>
+</svg>
