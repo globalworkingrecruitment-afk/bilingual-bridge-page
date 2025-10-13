@@ -34,11 +34,21 @@ const writeToStorage = <T>(key: string, value: T) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
+const createSeedUser = (username: string, password: string, fullName?: string): AppUser => ({
+  id: generateId(),
+  username: username.trim(),
+  password: password.trim(),
+  fullName,
+  isActive: true,
+  createdAt: new Date().toISOString(),
+});
+
 export const initializeLocalDb = () => {
   if (!isBrowser) return;
 
   if (!window.localStorage.getItem(USERS_KEY)) {
-    writeToStorage<AppUser[]>(USERS_KEY, []);
+    const defaultUsers: AppUser[] = [createSeedUser("prueba", "123", "Usuario de prueba")];
+    writeToStorage<AppUser[]>(USERS_KEY, defaultUsers);
   }
 
   if (!window.localStorage.getItem(LOGS_KEY)) {
@@ -47,7 +57,19 @@ export const initializeLocalDb = () => {
 };
 
 export const getStoredSession = (): SessionUser | null => {
-  return readFromStorage<SessionUser | null>(SESSION_KEY, null);
+  const stored = readFromStorage<(SessionUser & { email?: string }) | null>(SESSION_KEY, null);
+
+  if (!stored) {
+    return null;
+  }
+
+  if (!stored.username && stored.email) {
+    const migratedSession: SessionUser = { username: stored.email, role: stored.role };
+    persistSession(migratedSession);
+    return migratedSession;
+  }
+
+  return stored;
 };
 
 export const persistSession = (session: SessionUser | null) => {
@@ -61,21 +83,67 @@ export const persistSession = (session: SessionUser | null) => {
 };
 
 export const getUsers = (): AppUser[] => {
-  return readFromStorage<AppUser[]>(USERS_KEY, []);
+  const stored = readFromStorage<(AppUser & { email?: string })[]>(USERS_KEY, []);
+
+  let hasChanges = false;
+
+  const migratedUsers = stored.map((user) => {
+    if (user.username) {
+      const trimmedUsername = user.username.trim();
+      if (trimmedUsername !== user.username) {
+        hasChanges = true;
+      }
+      return { ...user, username: trimmedUsername } as AppUser;
+    }
+
+    if ((user as AppUser & { email: string }).email) {
+      const { email, ...rest } = user as AppUser & { email: string };
+      hasChanges = true;
+      return { ...rest, username: email.trim() } as AppUser;
+    }
+
+    return user as AppUser;
+  });
+
+  if (hasChanges) {
+    writeToStorage<AppUser[]>(USERS_KEY, migratedUsers);
+  }
+
+  return migratedUsers;
 };
 
 export const getAccessLogs = (): AccessLog[] => {
-  const logs = readFromStorage<AccessLog[]>(LOGS_KEY, []);
+  const stored = readFromStorage<(AccessLog & { userEmail?: string })[]>(LOGS_KEY, []);
 
-  return logs.sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  let hasChanges = false;
+
+  const migratedLogs = stored.map((log) => {
+    if (log.username) {
+      return log;
+    }
+
+    if ((log as AccessLog & { userEmail: string }).userEmail) {
+      const { userEmail, ...rest } = log as AccessLog & { userEmail: string };
+      hasChanges = true;
+      return { ...rest, username: userEmail } as AccessLog;
+    }
+
+    return log as AccessLog;
+  });
+
+  if (hasChanges) {
+    writeToStorage<AccessLog[]>(LOGS_KEY, migratedLogs);
+  }
+
+  return migratedLogs.sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
 };
 
-export const addAccessLog = (userEmail: string, role: UserRole) => {
+export const addAccessLog = (username: string, role: UserRole) => {
   const logs = readFromStorage<AccessLog[]>(LOGS_KEY, []);
 
   const newLog: AccessLog = {
     id: generateId(),
-    userEmail,
+    username,
     role,
     loggedAt: new Date().toISOString(),
   };
@@ -86,13 +154,13 @@ export const addAccessLog = (userEmail: string, role: UserRole) => {
   return newLog;
 };
 
-export const validateUserCredentials = (email: string, password: string): AppUser | null => {
+export const validateUserCredentials = (username: string, password: string): AppUser | null => {
   const users = getUsers();
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedUsername = username.trim().toLowerCase();
 
   const user = users.find(
     (candidate) =>
-      candidate.email.toLowerCase() === normalizedEmail &&
+      candidate.username.toLowerCase() === normalizedUsername &&
       candidate.password === password &&
       candidate.isActive,
   );
@@ -100,28 +168,29 @@ export const validateUserCredentials = (email: string, password: string): AppUse
   return user ?? null;
 };
 
-export const addUser = (email: string, password: string, fullName?: string): AppUser => {
+export const addUser = (username: string, password: string, fullName?: string): AppUser => {
   const users = getUsers();
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedUsername = username.trim();
+  const normalizedPassword = password.trim();
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-    throw new Error("El correo electrónico no es válido.");
+  if (!normalizedUsername) {
+    throw new Error("El nombre de usuario no es válido.");
   }
 
-  if (password.trim().length < 6) {
-    throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  if (!normalizedPassword) {
+    throw new Error("La contraseña no es válida.");
   }
 
-  const exists = users.some((candidate) => candidate.email.toLowerCase() === normalizedEmail);
+  const exists = users.some((candidate) => candidate.username.toLowerCase() === normalizedUsername.toLowerCase());
 
   if (exists) {
-    throw new Error("Ya existe un usuario con este correo electrónico.");
+    throw new Error("Ya existe un usuario con este nombre.");
   }
 
   const newUser: AppUser = {
     id: generateId(),
-    email: normalizedEmail,
-    password: password.trim(),
+    username: normalizedUsername,
+    password: normalizedPassword,
     fullName: fullName?.trim() || undefined,
     isActive: true,
     createdAt: new Date().toISOString(),

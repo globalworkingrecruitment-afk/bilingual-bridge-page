@@ -47,9 +47,9 @@ export const englishContent = {
   },
   auth: {
     title: "Access Your Account",
-    subtitle: "Sign in with your credentials to continue",
-    emailLabel: "Email",
-    emailPlaceholder: "your@email.com",
+    subtitle: "Sign in with your username and password to continue",
+    usernameLabel: "Username",
+    usernamePlaceholder: "yourusername",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter your password",
     loginButton: "Sign in",

@@ -93,7 +93,7 @@ const Index = () => {
         <LanguageToggle language={language} onToggle={toggleLanguage} />
         <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="text-right text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">{currentUser?.email}</p>
+            <p className="font-medium text-foreground">{currentUser?.username}</p>
             <Badge variant="outline" className="uppercase tracking-wide">
               {currentUser?.role === "admin" ? "Administrator" : "User"}
             </Badge>

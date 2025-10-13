@@ -48,8 +48,8 @@ export const norwegianContent = {
   auth: {
     title: "Tilgang til Kontoen Din",
     subtitle: "Logg inn med brukernavn og passord for å fortsette",
-    emailLabel: "E-post",
-    emailPlaceholder: "din@epost.com",
+    usernameLabel: "Brukernavn",
+    usernamePlaceholder: "dittbrukernavn",
     passwordLabel: "Passord",
     passwordPlaceholder: "Skriv inn passordet ditt",
     loginButton: "Logg inn",

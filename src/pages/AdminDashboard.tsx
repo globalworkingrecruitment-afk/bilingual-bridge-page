@@ -18,7 +18,7 @@ const AdminDashboard = () => {
 
   const [users, setUsers] = useState<AppUser[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
-  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -35,14 +35,14 @@ const AdminDashboard = () => {
     setIsCreatingUser(true);
 
     try {
-      const createdUser = addUser(newUserEmail, newUserPassword, newUserName);
+      const createdUser = addUser(newUserUsername, newUserPassword, newUserName);
       setUsers((previous) => [...previous, createdUser]);
       setLogs(getAccessLogs());
       toast({
         title: "Usuario creado correctamente",
-        description: `${createdUser.email} ahora puede iniciar sesión en la plataforma.`,
+        description: `${createdUser.username} ahora puede iniciar sesión en la plataforma.`,
       });
-      setNewUserEmail("");
+      setNewUserUsername("");
       setNewUserPassword("");
       setNewUserName("");
     } catch (error: unknown) {
@@ -88,7 +88,7 @@ const AdminDashboard = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right text-sm text-muted-foreground">
-              <p className="font-medium">{currentUser?.email}</p>
+              <p className="font-medium">{currentUser?.username}</p>
               <p className="text-xs uppercase tracking-wide">Administrador</p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
@@ -148,13 +148,12 @@ const AdminDashboard = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-user-email">Correo electrónico</Label>
+                <Label htmlFor="new-user-username">Nombre de usuario</Label>
                 <Input
-                  id="new-user-email"
-                  type="email"
-                  placeholder="correo@ejemplo.com"
-                  value={newUserEmail}
-                  onChange={(event) => setNewUserEmail(event.target.value)}
+                  id="new-user-username"
+                  placeholder="usuario.ejemplo"
+                  value={newUserUsername}
+                  onChange={(event) => setNewUserUsername(event.target.value)}
                   required
                 />
               </div>
@@ -191,7 +190,7 @@ const AdminDashboard = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead>Correo</TableHead>
+                    <TableHead>Usuario</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Creado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -201,7 +200,7 @@ const AdminDashboard = () => {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.fullName ?? "Sin especificar"}</TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.username}</TableCell>
                       <TableCell>
                         <Badge variant={user.isActive ? "default" : "secondary"}>
                           {user.isActive ? "Activo" : "Inactivo"}
@@ -238,7 +237,7 @@ const AdminDashboard = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Correo</TableHead>
+                    <TableHead>Usuario</TableHead>
                     <TableHead>Rol</TableHead>
                     <TableHead>Fecha de ingreso</TableHead>
                   </TableRow>
@@ -246,7 +245,7 @@ const AdminDashboard = () => {
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="font-medium">{log.userEmail}</TableCell>
+                      <TableCell className="font-medium">{log.username}</TableCell>
                       <TableCell className="capitalize">{log.role}</TableCell>
                       <TableCell>{new Date(log.loggedAt).toLocaleString()}</TableCell>
                     </TableRow>
