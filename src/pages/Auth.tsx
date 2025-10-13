@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
@@ -81,10 +80,12 @@ const Auth = () => {
       toast({
         title: content.auth.checkEmail,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const description = error instanceof Error ? error.message : content.auth.error;
+
       toast({
         title: content.auth.error,
-        description: error.message,
+        description,
         variant: "destructive",
       });
     } finally {
@@ -93,32 +94,38 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-6">
-      <LanguageToggle language={language} onToggle={() => setLanguage(prev => prev === "en" ? "no" : "en")} />
-      
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center gap-2 mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/")}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {content.auth.backToHome}
-            </Button>
-          </div>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 flex items-center justify-center px-6 py-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-10"
+        style={{ backgroundImage: "url('/globalworking-logo.svg')" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-background/95 via-background/80 to-primary/40"
+      />
+
+      <div className="absolute top-6 right-6 z-20">
+        <LanguageToggle language={language} onToggle={() => setLanguage(prev => prev === "en" ? "no" : "en")} />
+      </div>
+
+      <Card className="relative z-10 w-full max-w-md border-primary/30 bg-background/90 backdrop-blur-xl shadow-2xl">
+        <CardHeader className="space-y-4 text-center">
+          <img
+            src="/globalworking-logo.svg"
+            alt="Global Working"
+            className="mx-auto h-14 w-auto"
+          />
+          <CardTitle className="text-3xl font-bold text-foreground">
             {content.auth.title}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base">
             {content.auth.subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2 text-left">
               <Label htmlFor="email">{content.auth.emailLabel}</Label>
               <Input
                 id="email"

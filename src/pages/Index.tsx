@@ -9,6 +9,7 @@ import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
 import { Candidate, CareSetting } from "@/types/candidate";
+import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
 
 const Index = () => {
   const [language, setLanguage] = useState<"en" | "no">("en");
@@ -55,32 +56,21 @@ const Index = () => {
       .filter(section => section.count > 0);
   }, [content.candidates.filters.groups]);
 
-  const filteredCandidates = useMemo(() => {
-    const normalizedQuery = searchQuery.toLowerCase();
+  const searchCriteria = useMemo(() => parseSearchQuery(searchQuery), [searchQuery]);
 
+  const filteredCandidates = useMemo(() => {
     return mockCandidates.filter((candidate: Candidate) => {
-      const matchesExperience = selectedSetting
+      const matchesSelectedExperience = selectedSetting
         ? candidate.experiences.some(experience => experience.care_setting === selectedSetting)
         : true;
 
-      if (!matchesExperience) {
+      if (!matchesSelectedExperience) {
         return false;
       }
 
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      return (
-        candidate.full_name.toLowerCase().includes(normalizedQuery) ||
-        candidate.cover_letter.toLowerCase().includes(normalizedQuery) ||
-        candidate.experiences.some(experience =>
-          experience.title.toLowerCase().includes(normalizedQuery) ||
-          experience.duration.toLowerCase().includes(normalizedQuery)
-        )
-      );
+      return candidateMatchesCriteria(candidate, searchCriteria);
     });
-  }, [searchQuery, selectedSetting]);
+  }, [searchCriteria, selectedSetting]);
 
   const handleSelectExperience = (setting: CareSetting | null) => {
     setSelectedSetting(prev => (prev === setting ? null : setting));
