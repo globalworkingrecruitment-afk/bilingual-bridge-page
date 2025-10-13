@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,77 +8,41 @@ import { useToast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
+import { useAuth } from "@/context/AuthContext";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [language, setLanguage] = useState<"en" | "no">("en");
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { currentUser, login, loading: sessionLoading } = useAuth();
 
   const content = language === "en" ? englishContent : norwegianContent;
 
   useEffect(() => {
-    let isMounted = true;
+    if (sessionLoading) return;
 
-    const handleRedirectSession = async () => {
-      const hash = window.location.hash;
+    if (currentUser?.role === "admin") {
+      navigate("/admin", { replace: true });
+    } else if (currentUser) {
+      navigate("/", { replace: true });
+    }
+  }, [currentUser, navigate, sessionLoading]);
 
-      if (hash.includes("access_token")) {
-        const { error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
-
-        if (error) {
-          toast({
-            title: content.auth.error,
-            description: error.message,
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (!isMounted) return;
-
-        window.history.replaceState(
-          {},
-          document.title,
-          `${window.location.origin}/#/`
-        );
-
-        navigate("/", { replace: true });
-        return;
-      }
-
-      const { data } = await supabase.auth.getSession();
-
-      if (isMounted && data.session) {
-        navigate("/", { replace: true });
-      }
-    };
-
-    handleRedirectSession();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [content.auth.error, navigate, toast]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/#/auth`,
-        },
-      });
-
-      if (error) throw error;
+      const user = await login(email, password);
 
       toast({
-        title: content.auth.checkEmail,
+        title: user.role === "admin" ? content.auth.successAdmin : content.auth.successUser,
       });
+
+      navigate(user.role === "admin" ? "/admin" : "/", { replace: true });
     } catch (error: unknown) {
       const description = error instanceof Error ? error.message : content.auth.error;
 
@@ -106,7 +69,7 @@ const Auth = () => {
       />
 
       <div className="absolute top-6 right-6 z-20">
-        <LanguageToggle language={language} onToggle={() => setLanguage(prev => prev === "en" ? "no" : "en")} />
+        <LanguageToggle language={language} onToggle={() => setLanguage((prev) => (prev === "en" ? "no" : "en"))} />
       </div>
 
       <Card className="relative z-10 w-full max-w-md border-primary/30 bg-background/90 backdrop-blur-xl shadow-2xl">
@@ -132,17 +95,25 @@ const Auth = () => {
                 type="email"
                 placeholder={content.auth.emailPlaceholder}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
                 disabled={loading}
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? "..." : content.auth.loginButton}
+            <div className="space-y-2 text-left">
+              <Label htmlFor="password">{content.auth.passwordLabel}</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder={content.auth.passwordPlaceholder}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                disabled={loading}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? content.auth.loading : content.auth.loginButton}
             </Button>
           </form>
         </CardContent>

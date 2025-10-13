@@ -10,12 +10,18 @@ import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
 import { Candidate, CareSetting } from "@/types/candidate";
 import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [language, setLanguage] = useState<"en" | "no">("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
   const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
 
   const content = language === "en" ? englishContent : norwegianContent;
 
@@ -76,9 +82,32 @@ const Index = () => {
     setSelectedSetting(prev => (prev === setting ? null : setting));
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/auth", { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <LanguageToggle language={language} onToggle={toggleLanguage} />
+      <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
+        <LanguageToggle language={language} onToggle={toggleLanguage} />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="text-right text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">{currentUser?.email}</p>
+            <Badge variant="outline" className="uppercase tracking-wide">
+              {currentUser?.role === "admin" ? "Administrator" : "User"}
+            </Badge>
+          </div>
+          {currentUser?.role === "admin" && (
+            <Button variant="secondary" size="sm" onClick={() => navigate("/admin") }>
+              Admin panel
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            Log out
+          </Button>
+        </div>
+      </div>
 
       <Hero content={content.hero} />
       <Stats content={content.stats} />

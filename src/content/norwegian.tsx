@@ -47,13 +47,16 @@ export const norwegianContent = {
   },
   auth: {
     title: "Tilgang til Kontoen Din",
-    subtitle: "Skriv inn e-posten din for å motta en magisk lenke",
+    subtitle: "Logg inn med brukernavn og passord for å fortsette",
     emailLabel: "E-post",
     emailPlaceholder: "din@epost.com",
-    loginButton: "Send Magisk Lenke",
-    backToHome: "Utforsk uten innlogging",
-    checkEmail: "Sjekk e-posten din for den magiske lenken for å logge inn.",
-    error: "Kunne ikke sende magisk lenke. Vennligst prøv igjen."
+    passwordLabel: "Passord",
+    passwordPlaceholder: "Skriv inn passordet ditt",
+    loginButton: "Logg inn",
+    loading: "Logger inn...",
+    successAdmin: "Velkommen tilbake, administrator!",
+    successUser: "Velkommen tilbake!",
+    error: "Vi kunne ikke bekrefte legitimasjonen din. Prøv igjen."
   },
   footer: {
     rights: "Alle rettigheter reservert"
