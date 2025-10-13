@@ -47,13 +47,16 @@ export const englishContent = {
   },
   auth: {
     title: "Access Your Account",
-    subtitle: "Enter your email to receive a magic link",
+    subtitle: "Sign in with your credentials to continue",
     emailLabel: "Email",
     emailPlaceholder: "your@email.com",
-    loginButton: "Send Magic Link",
-    backToHome: "Browse without signing in",
-    checkEmail: "Check your email for the magic link to sign in.",
-    error: "Could not send magic link. Please try again."
+    passwordLabel: "Password",
+    passwordPlaceholder: "Enter your password",
+    loginButton: "Sign in",
+    loading: "Signing in...",
+    successAdmin: "Welcome back, administrator!",
+    successUser: "Welcome back!",
+    error: "We couldn't verify your credentials. Please try again."
   },
   footer: {
     rights: "All rights reserved"
