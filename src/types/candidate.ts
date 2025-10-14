@@ -21,5 +21,5 @@ export interface Candidate {
   photo_url?: string;
   created_at?: string;
   updated_at?: string;
-  experiences: CandidateExperience[];
+  experienceDetail: CandidateExperience;
 }

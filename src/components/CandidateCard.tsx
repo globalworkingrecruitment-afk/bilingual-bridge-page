@@ -51,14 +51,10 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [scheduleStep, setScheduleStep] = useState<ScheduleStep>("availability");
   const [scheduleEmployerEmail, setScheduleEmployerEmail] = useState("");
-  const [scheduleCandidateEmail, setScheduleCandidateEmail] = useState(candidate.email);
   const [scheduleAvailability, setScheduleAvailability] = useState("");
   const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
 
-  const experienceHighlights = candidate.experience
-    .split("\n")
-    .map(line => line.trim())
-    .filter(Boolean);
+  const primaryExperience = candidate.experienceDetail;
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "user") {
@@ -98,7 +94,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
     const nextEmail = storedEmail ?? fallbackEmail;
 
     setScheduleEmployerEmail(nextEmail);
-    setScheduleCandidateEmail(candidate.email);
     setScheduleAvailability("");
     setScheduleStep(nextEmail ? "availability" : "email");
     setIsSubmittingSchedule(false);
@@ -158,17 +153,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
   const handleAvailabilitySubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const normalizedCandidateEmail = scheduleCandidateEmail.trim();
     const normalizedAvailability = scheduleAvailability.trim();
-
-    if (!normalizedCandidateEmail) {
-      toast({
-        title: "Correo del candidato requerido",
-        description: "Incluye un correo de contacto para el candidato.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!normalizedAvailability) {
       toast({
@@ -179,7 +164,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
       return;
     }
 
-    setScheduleCandidateEmail(normalizedCandidateEmail);
     setScheduleAvailability(normalizedAvailability);
     setScheduleStep("confirm");
   };
@@ -195,7 +179,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
     }
 
     const normalizedEmployerEmail = scheduleEmployerEmail.trim();
-    const normalizedCandidateEmail = scheduleCandidateEmail.trim();
     const normalizedAvailability = scheduleAvailability.trim();
 
     setScheduleEmployerEmail(normalizedEmployerEmail);
@@ -209,6 +192,8 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
       });
       return;
     }
+
+    const normalizedCandidateEmail = candidate.email.trim();
 
     const payload = {
       emailEmpleador: normalizedEmployerEmail,
@@ -358,15 +343,11 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
               <Briefcase className="w-4 h-4" />
               <span>{content.candidateCard.experiences}</span>
             </div>
-            {candidate.experiences.length > 0 ? (
-              <ul className="space-y-2">
-                {candidate.experiences.map((experience, index) => (
-                  <li key={`${candidate.id}-${index}`} className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{experience.title}</span>{" "}
-                    <span className="italic">({experience.duration})</span>
-                  </li>
-                ))}
-              </ul>
+            {primaryExperience ? (
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{primaryExperience.title}</span>{" "}
+                <span className="italic">({primaryExperience.duration})</span>
+              </p>
             ) : (
               <p className="text-sm text-muted-foreground italic">
                 {content.candidateCard.noExperience}
@@ -374,18 +355,14 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
             )}
           </div>
 
-          {experienceHighlights.length > 0 && (
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-primary uppercase tracking-wide">
-                {content.candidateCard.experienceOverview}
-              </h4>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                {experienceHighlights.map((item, index) => (
-                  <li key={`${candidate.id}-highlight-${index}`}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-primary uppercase tracking-wide">
+              {content.candidateCard.experienceOverview}
+            </h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-line">
+              {candidate.experience}
+            </p>
+          </div>
         </div>
 
       </CardContent>
@@ -441,17 +418,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                   <p className="text-muted-foreground">{candidate.profession}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`schedule-candidate-email-${candidate.id}`}>Correo del candidato</Label>
-                  <Input
-                    id={`schedule-candidate-email-${candidate.id}`}
-                    type="email"
-                    placeholder="candidato@correo.com"
-                    value={scheduleCandidateEmail}
-                    onChange={(event) => setScheduleCandidateEmail(event.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor={`schedule-availability-${candidate.id}`}>Disponibilidad propuesta</Label>
                   <Textarea
                     id={`schedule-availability-${candidate.id}`}
@@ -492,7 +458,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                 <div>
                   <p className="font-semibold text-foreground">Candidato</p>
                   <p className="text-muted-foreground">{candidate.full_name}</p>
-                  <p className="text-muted-foreground">{scheduleCandidateEmail}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Disponibilidad propuesta</p>
