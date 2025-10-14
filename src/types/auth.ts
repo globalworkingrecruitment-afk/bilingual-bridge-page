@@ -21,3 +21,11 @@ export interface AccessLog {
   role: UserRole;
   loggedAt: string;
 }
+
+export interface CandidateViewLog {
+  id: string;
+  employerUsername: string;
+  candidateId: string;
+  candidateName: string;
+  viewedAt: string;
+}

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,18 +10,32 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Candidate } from "@/types/candidate";
+import type { AppContent } from "@/types/content";
 import { Briefcase, FileText, GraduationCap, Languages, Plus } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { recordCandidateView } from "@/lib/localDb";
 
 interface CandidateCardProps {
   candidate: Candidate;
-  content: any;
+  content: AppContent;
 }
 
 export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
+  const { currentUser } = useAuth();
   const experienceHighlights = candidate.experience
     .split("\n")
     .map(line => line.trim())
     .filter(Boolean);
+
+  const handleDialogOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) return;
+      if (!currentUser || currentUser.role !== "user") return;
+
+      recordCandidateView(currentUser.username, candidate.id, candidate.full_name);
+    },
+    [candidate.full_name, candidate.id, currentUser],
+  );
 
   return (
     <Card className="hover:shadow-glow transition-all duration-300 border-2 hover:border-primary/50 group">
@@ -35,7 +50,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
               <p className="text-sm text-muted-foreground">{candidate.profession}</p>
             </div>
           </div>
-          <Dialog>
+          <Dialog onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
               <Button
                 variant="outline"

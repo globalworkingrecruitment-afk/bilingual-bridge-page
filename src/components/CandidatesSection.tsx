@@ -1,9 +1,10 @@
 import { Candidate } from "@/types/candidate";
+import type { AppContent } from "@/types/content";
 import { CandidateCard } from "./CandidateCard";
 
 interface CandidatesSectionProps {
   candidates: Candidate[];
-  content: any;
+  content: AppContent;
 }
 
 export const CandidatesSection = ({ candidates, content }: CandidatesSectionProps) => {

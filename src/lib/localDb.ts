@@ -1,8 +1,9 @@
-import { AccessLog, AppUser, SessionUser, UserRole } from "@/types/auth";
+import { AccessLog, AppUser, CandidateViewLog, SessionUser, UserRole } from "@/types/auth";
 
 const USERS_KEY = "bbp-app-users";
 const LOGS_KEY = "bbp-access-logs";
 const SESSION_KEY = "bbp-auth-session";
+const CANDIDATE_VIEWS_KEY = "bbp-candidate-views";
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
@@ -61,6 +62,10 @@ export const initializeLocalDb = () => {
 
   if (!window.localStorage.getItem(LOGS_KEY)) {
     writeToStorage<AccessLog[]>(LOGS_KEY, []);
+  }
+
+  if (!window.localStorage.getItem(CANDIDATE_VIEWS_KEY)) {
+    writeToStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
   }
 };
 
@@ -169,6 +174,90 @@ export const addAccessLog = (username: string, role: UserRole) => {
   return newLog;
 };
 
+export const getCandidateViews = (): CandidateViewLog[] => {
+  const stored = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
+
+  const sanitized = stored
+    .map((view) => {
+      if (!view.employerUsername && (view as CandidateViewLog & { username?: string }).username) {
+        const { username, ...rest } = view as CandidateViewLog & { username: string };
+        return { ...rest, employerUsername: username };
+      }
+
+      return view;
+    })
+    .filter((view) => Boolean(view.employerUsername) && Boolean(view.candidateId) && Boolean(view.candidateName));
+
+  if (sanitized.length !== stored.length) {
+    writeToStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, sanitized);
+  }
+
+  return sanitized.sort((a, b) => new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime());
+};
+
+export const getCandidateViewsByUser = (): Record<string, CandidateViewLog[]> => {
+  const views = getCandidateViews();
+
+  return views.reduce<Record<string, CandidateViewLog[]>>((accumulator, view) => {
+    const key = view.employerUsername.trim().toLowerCase();
+    if (!accumulator[key]) {
+      accumulator[key] = [];
+    }
+
+    accumulator[key].push(view);
+    return accumulator;
+  }, {});
+};
+
+export const recordCandidateView = (
+  employerUsername: string,
+  candidateId: string,
+  candidateName: string,
+): CandidateViewLog | null => {
+  if (!employerUsername?.trim() || !candidateId?.trim() || !candidateName?.trim()) {
+    return null;
+  }
+
+  const normalizedUsername = employerUsername.trim();
+  const normalizedCandidateId = candidateId.trim();
+  const normalizedCandidateName = candidateName.trim();
+
+  const currentViews = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
+
+  const existingIndex = currentViews.findIndex(
+    (view) =>
+      view.employerUsername.trim().toLowerCase() === normalizedUsername.toLowerCase() &&
+      view.candidateId === normalizedCandidateId,
+  );
+
+  const timestamp = new Date().toISOString();
+
+  if (existingIndex >= 0) {
+    const updatedView: CandidateViewLog = {
+      ...currentViews[existingIndex],
+      candidateName: normalizedCandidateName,
+      viewedAt: timestamp,
+    };
+
+    currentViews[existingIndex] = updatedView;
+    writeToStorage(CANDIDATE_VIEWS_KEY, currentViews);
+    return updatedView;
+  }
+
+  const newView: CandidateViewLog = {
+    id: generateId(),
+    employerUsername: normalizedUsername,
+    candidateId: normalizedCandidateId,
+    candidateName: normalizedCandidateName,
+    viewedAt: timestamp,
+  };
+
+  currentViews.push(newView);
+  writeToStorage(CANDIDATE_VIEWS_KEY, currentViews);
+
+  return newView;
+};
+
 export const validateUserCredentials = (identifier: string, password: string): AppUser | null => {
   const users = getUsers();
   const normalizedIdentifier = identifier.trim().toLowerCase();
@@ -250,7 +339,19 @@ export const toggleUserStatus = (userId: string): AppUser | null => {
 
 export const removeUser = (userId: string) => {
   const users = getUsers();
+  const removedUser = users.find((user) => user.id === userId);
   const filtered = users.filter((user) => user.id !== userId);
 
   writeToStorage(USERS_KEY, filtered);
+
+  if (removedUser) {
+    const views = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
+    const remainingViews = views.filter(
+      (view) => view.employerUsername.trim().toLowerCase() !== removedUser.username.trim().toLowerCase(),
+    );
+
+    if (remainingViews.length !== views.length) {
+      writeToStorage(CANDIDATE_VIEWS_KEY, remainingViews);
+    }
+  }
 };
