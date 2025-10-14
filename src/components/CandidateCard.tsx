@@ -194,10 +194,12 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
     }
 
     const normalizedCandidateEmail = candidate.email.trim();
+    const normalizedEmployerName = employerProfile?.fullName?.trim();
 
     const payload = {
       emailEmpleador: normalizedEmployerEmail,
       usuarioEmpleador: currentUser.username.trim(),
+      nombreEmpleador: normalizedEmployerName ?? currentUser.username.trim(),
       emailCandidato: normalizedCandidateEmail,
       NombreCandidato: candidate.full_name,
       disponibilidad: normalizedAvailability,
@@ -301,6 +303,17 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
+                    <Briefcase className="w-5 h-5 text-primary mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                        {content.candidateCard.experienceOverview}
+                      </p>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                        {candidate.experience}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
                     <FileText className="w-5 h-5 text-primary mt-0.5" />
                     <div className="space-y-1">
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -354,15 +367,6 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                 {content.candidateCard.noExperience}
               </p>
             )}
-          </div>
-
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-primary uppercase tracking-wide">
-              {content.candidateCard.experienceOverview}
-            </h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-line">
-              {candidate.experience}
-            </p>
           </div>
         </div>
 
