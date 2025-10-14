@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { AppUser, AccessLog } from "@/types/auth";
-import { addUser, getAccessLogs, getUsers, toggleUserStatus } from "@/lib/localDb";
+import { AppUser, AccessLog, CandidateViewLog } from "@/types/auth";
+import { addUser, getAccessLogs, getUsers, toggleUserStatus, getCandidateViewsByUser } from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 const AdminDashboard = () => {
   const { currentUser, logout } = useAuth();
@@ -18,6 +19,7 @@ const AdminDashboard = () => {
 
   const [users, setUsers] = useState<AppUser[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [candidateViews, setCandidateViews] = useState<Record<string, CandidateViewLog[]>>({});
   const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
@@ -27,9 +29,18 @@ const AdminDashboard = () => {
   useEffect(() => {
     setUsers(getUsers());
     setLogs(getAccessLogs());
+    setCandidateViews(getCandidateViewsByUser());
   }, []);
 
   const activeUsers = useMemo(() => users.filter((user) => user.isActive).length, [users]);
+
+  const getViewsForUser = useCallback(
+    (username: string): CandidateViewLog[] => {
+      const key = username.trim().toLowerCase();
+      return candidateViews[key] ?? [];
+    },
+    [candidateViews],
+  );
 
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,6 +50,7 @@ const AdminDashboard = () => {
       const createdUser = addUser(newUserUsername, newUserPassword, newUserName, newUserEmail);
       setUsers((previous) => [...previous, createdUser]);
       setLogs(getAccessLogs());
+      setCandidateViews(getCandidateViewsByUser());
       toast({
         title: "Usuario creado correctamente",
         description: `${createdUser.username} ahora puede iniciar sesión en la plataforma.`,
@@ -68,8 +80,9 @@ const AdminDashboard = () => {
     });
   };
 
-  const handleRefreshLogs = () => {
+  const handleRefreshData = () => {
     setLogs(getAccessLogs());
+    setCandidateViews(getCandidateViewsByUser());
     toast({ title: "Registros actualizados" });
   };
 
@@ -79,8 +92,8 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-16">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pt-12 text-foreground">
+    <div className="min-h-screen bg-slate-100 pb-16">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pt-12 text-slate-900">
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Panel de control del administrador</h1>
@@ -100,7 +113,7 @@ const AdminDashboard = () => {
         </header>
 
         <section className="grid gap-6 lg:grid-cols-3">
-          <Card className="border-primary/30 bg-background/80 backdrop-blur">
+          <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
             <CardHeader>
               <CardTitle>Usuarios activos</CardTitle>
               <CardDescription>Usuarios autorizados actualmente para ingresar.</CardDescription>
@@ -109,7 +122,7 @@ const AdminDashboard = () => {
               <p className="text-4xl font-bold text-primary">{activeUsers}</p>
             </CardContent>
           </Card>
-          <Card className="border-primary/30 bg-background/80 backdrop-blur">
+          <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
             <CardHeader>
               <CardTitle>Usuarios registrados</CardTitle>
               <CardDescription>Total de usuarios creados por el administrador.</CardDescription>
@@ -118,7 +131,7 @@ const AdminDashboard = () => {
               <p className="text-4xl font-bold">{users.length}</p>
             </CardContent>
           </Card>
-          <Card className="border-primary/30 bg-background/80 backdrop-blur">
+          <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
             <CardHeader>
               <CardTitle>Último acceso</CardTitle>
               <CardDescription>Fecha del último inicio de sesión registrado.</CardDescription>
@@ -131,7 +144,7 @@ const AdminDashboard = () => {
           </Card>
         </section>
 
-        <Card className="border-primary/30 bg-background/80 backdrop-blur">
+        <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <CardHeader>
             <CardTitle>Crear nuevo usuario</CardTitle>
             <CardDescription>
@@ -189,7 +202,7 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-primary/30 bg-background/80 backdrop-blur">
+        <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <CardHeader>
             <CardTitle>Usuarios registrados</CardTitle>
             <CardDescription>Habilita o deshabilita accesos según las necesidades del negocio.</CardDescription>
@@ -205,42 +218,73 @@ const AdminDashboard = () => {
                     <TableHead>Usuario</TableHead>
                     <TableHead>Correo</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead>Candidatos vistos</TableHead>
                     <TableHead>Creado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.fullName ?? "Sin especificar"}</TableCell>
-                      <TableCell>{user.username}</TableCell>
-                      <TableCell>{user.email ?? "Sin email"}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.isActive ? "default" : "secondary"}>
-                          {user.isActive ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
-                          {user.isActive ? "Deshabilitar" : "Habilitar"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {users.map((user) => {
+                    const views = getViewsForUser(user.username);
+
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.fullName ?? "Sin especificar"}</TableCell>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.email ?? "Sin email"}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.isActive ? "default" : "secondary"}>
+                            {user.isActive ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {views.length === 0 ? (
+                            <span className="text-sm text-muted-foreground">Sin vistas</span>
+                          ) : (
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <Badge variant="outline" className="cursor-default font-semibold">
+                                  {views.length}
+                                </Badge>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="space-y-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">Candidatos vistos</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Última visita el {new Date(views[0].viewedAt).toLocaleString()}
+                                  </p>
+                                </div>
+                                <ul className="space-y-1 text-sm text-muted-foreground">
+                                  {views.map((view) => (
+                                    <li key={view.id}>{view.candidateName}</li>
+                                  ))}
+                                </ul>
+                              </HoverCardContent>
+                            </HoverCard>
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
+                            {user.isActive ? "Deshabilitar" : "Habilitar"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-primary/30 bg-background/80 backdrop-blur">
+        <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <CardHeader className="flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>Registro de accesos</CardTitle>
               <CardDescription>Consulta quién ingresó a la aplicación y cuándo lo hizo.</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={handleRefreshLogs}>
+            <Button variant="outline" size="sm" onClick={handleRefreshData}>
               Actualizar
             </Button>
           </CardHeader>
