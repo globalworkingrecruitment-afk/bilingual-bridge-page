@@ -197,6 +197,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
 
     const payload = {
       emailEmpleador: normalizedEmployerEmail,
+      usuarioEmpleador: currentUser.username.trim(),
       emailCandidato: normalizedCandidateEmail,
       NombreCandidato: candidate.full_name,
       disponibilidad: normalizedAvailability,
