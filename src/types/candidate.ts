@@ -9,7 +9,17 @@ export interface CandidateExperience {
 export interface Candidate {
   id: string;
   full_name: string;
-  birth_year: number;
-  cover_letter: string;
+  profession: string;
+  experience: string;
+  languages: string;
+  cover_letter_summary: string;
+  cover_letter_full: string;
+  education: string;
+  birth_date: string;
+  email: string;
+  phone: string;
+  photo_url?: string;
+  created_at?: string;
+  updated_at?: string;
   experiences: CandidateExperience[];
 }

@@ -34,11 +34,17 @@ const writeToStorage = <T>(key: string, value: T) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
-const createSeedUser = (username: string, password: string, fullName?: string): AppUser => ({
+const createSeedUser = (
+  username: string,
+  password: string,
+  fullName?: string,
+  email?: string,
+): AppUser => ({
   id: generateId(),
   username: username.trim(),
   password: password.trim(),
   fullName,
+  email: email?.trim() || undefined,
   isActive: true,
   createdAt: new Date().toISOString(),
 });
@@ -47,7 +53,9 @@ export const initializeLocalDb = () => {
   if (!isBrowser) return;
 
   if (!window.localStorage.getItem(USERS_KEY)) {
-    const defaultUsers: AppUser[] = [createSeedUser("prueba", "123", "Usuario de prueba")];
+    const defaultUsers: AppUser[] = [
+      createSeedUser("prueba", "123", "Usuario de prueba", "demo.empleador@example.com"),
+    ];
     writeToStorage<AppUser[]>(USERS_KEY, defaultUsers);
   }
 
@@ -88,22 +96,29 @@ export const getUsers = (): AppUser[] => {
   let hasChanges = false;
 
   const migratedUsers = stored.map((user) => {
-    if (user.username) {
-      const trimmedUsername = user.username.trim();
-      if (trimmedUsername !== user.username) {
-        hasChanges = true;
-      }
-      return { ...user, username: trimmedUsername } as AppUser;
-    }
+    const normalizedUsername = user.username?.trim();
+    const normalizedEmail = (user as AppUser & { email?: string }).email?.trim();
 
-    if ((user as AppUser & { email: string }).email) {
-      const { email, ...rest } = user as AppUser & { email: string };
+    const nextUser: AppUser & { email?: string } = {
+      ...user,
+      username: normalizedUsername || normalizedEmail || "",
+      email: normalizedEmail,
+    };
+
+    if (normalizedUsername !== user.username) {
       hasChanges = true;
-      return { ...rest, username: email.trim() } as AppUser;
     }
 
-    return user as AppUser;
-  });
+    if (normalizedEmail !== (user as AppUser & { email?: string }).email) {
+      hasChanges = true;
+    }
+
+    if (!normalizedUsername && normalizedEmail) {
+      hasChanges = true;
+    }
+
+    return nextUser;
+  }).filter((user): user is AppUser => Boolean(user.username));
 
   if (hasChanges) {
     writeToStorage<AppUser[]>(USERS_KEY, migratedUsers);
@@ -154,24 +169,35 @@ export const addAccessLog = (username: string, role: UserRole) => {
   return newLog;
 };
 
-export const validateUserCredentials = (username: string, password: string): AppUser | null => {
+export const validateUserCredentials = (identifier: string, password: string): AppUser | null => {
   const users = getUsers();
-  const normalizedUsername = username.trim().toLowerCase();
+  const normalizedIdentifier = identifier.trim().toLowerCase();
+  const normalizedPassword = password.trim();
 
-  const user = users.find(
-    (candidate) =>
-      candidate.username.toLowerCase() === normalizedUsername &&
-      candidate.password === password &&
-      candidate.isActive,
-  );
+  const user = users.find(candidate => {
+    const usernameMatch = candidate.username.trim().toLowerCase() === normalizedIdentifier;
+    const emailMatch = candidate.email?.trim().toLowerCase() === normalizedIdentifier;
+
+    return (
+      (usernameMatch || emailMatch) &&
+      candidate.password === normalizedPassword &&
+      candidate.isActive
+    );
+  });
 
   return user ?? null;
 };
 
-export const addUser = (username: string, password: string, fullName?: string): AppUser => {
+export const addUser = (
+  username: string,
+  password: string,
+  fullName?: string,
+  email?: string,
+): AppUser => {
   const users = getUsers();
   const normalizedUsername = username.trim();
   const normalizedPassword = password.trim();
+  const normalizedEmail = email?.trim();
 
   if (!normalizedUsername) {
     throw new Error("El nombre de usuario no es válido.");
@@ -181,10 +207,16 @@ export const addUser = (username: string, password: string, fullName?: string): 
     throw new Error("La contraseña no es válida.");
   }
 
-  const exists = users.some((candidate) => candidate.username.toLowerCase() === normalizedUsername.toLowerCase());
+  const exists = users.some(candidate => {
+    const usernameTaken = candidate.username.toLowerCase() === normalizedUsername.toLowerCase();
+    const emailTaken = normalizedEmail
+      ? candidate.email?.toLowerCase() === normalizedEmail.toLowerCase()
+      : false;
+    return usernameTaken || emailTaken;
+  });
 
   if (exists) {
-    throw new Error("Ya existe un usuario con este nombre.");
+    throw new Error("Ya existe un usuario con este nombre o correo electrónico.");
   }
 
   const newUser: AppUser = {
@@ -192,6 +224,7 @@ export const addUser = (username: string, password: string, fullName?: string): 
     username: normalizedUsername,
     password: normalizedPassword,
     fullName: fullName?.trim() || undefined,
+    email: normalizedEmail || undefined,
     isActive: true,
     createdAt: new Date().toISOString(),
   };

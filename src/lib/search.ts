@@ -79,8 +79,6 @@ const normalizeText = (text: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "");
 
-const getCurrentYear = () => new Date().getFullYear();
-
 export const parseSearchQuery = (query: string): SearchCriteria => {
   const normalizedQuery = query.toLowerCase();
   const criteria: SearchCriteria = {
@@ -167,9 +165,12 @@ export const candidateMatchesCriteria = (
     }
   }
 
-  const currentYear = getCurrentYear();
-  const hasBirthYear = typeof candidate.birth_year === "number" && !Number.isNaN(candidate.birth_year);
-  const candidateAge = hasBirthYear ? currentYear - candidate.birth_year : null;
+  const birthDate = candidate.birth_date ? new Date(candidate.birth_date) : null;
+  const birthTime = birthDate?.getTime();
+  const candidateAge =
+    birthTime !== undefined && !Number.isNaN(birthTime)
+      ? new Date().getFullYear() - birthDate!.getFullYear()
+      : null;
 
   if (typeof ageLessThan === "number" && candidateAge !== null) {
     if (!(candidateAge < ageLessThan)) {
@@ -190,7 +191,12 @@ export const candidateMatchesCriteria = (
   const searchableText = normalizeText(
     [
       candidate.full_name,
-      candidate.cover_letter,
+      candidate.profession,
+      candidate.languages,
+      candidate.education,
+      candidate.cover_letter_summary,
+      candidate.cover_letter_full,
+      candidate.experience,
       candidate.experiences.map(experience => `${experience.title} ${experience.duration}`),
     ]
       .flat()

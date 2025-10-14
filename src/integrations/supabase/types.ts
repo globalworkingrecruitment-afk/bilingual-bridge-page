@@ -16,67 +16,54 @@ export type Database = {
     Tables: {
       candidates: {
         Row: {
-          birth_year: number
-          cover_letter: string
+          birth_date: string
           created_at: string
+          cover_letter_full: string
+          cover_letter_summary: string
+          education: string
+          email: string
           full_name: string
           id: string
+          languages: string
+          phone: string
+          photo_url: string | null
+          profession: string
+          experience: string
           updated_at: string
         }
         Insert: {
-          birth_year: number
-          cover_letter: string
+          birth_date: string
           created_at?: string
+          cover_letter_full: string
+          cover_letter_summary: string
+          education: string
+          email: string
           full_name: string
           id?: string
+          languages: string
+          phone: string
+          photo_url?: string | null
+          profession: string
+          experience: string
           updated_at?: string
         }
         Update: {
-          birth_year?: number
-          cover_letter?: string
+          birth_date?: string
           created_at?: string
+          cover_letter_full?: string
+          cover_letter_summary?: string
+          education?: string
+          email?: string
           full_name?: string
           id?: string
+          languages?: string
+          phone?: string
+          photo_url?: string | null
+          profession?: string
+          experience?: string
           updated_at?: string
         }
         Relationships: []
-      }
-      candidate_experiences: {
-        Row: {
-          candidate_id: string
-          created_at: string
-          care_setting: Database["public"]["Enums"]["care_setting"]
-          duration: string
-          id: string
-          position: number
-          title: string
-        }
-        Insert: {
-          candidate_id: string
-          created_at?: string
-          care_setting: Database["public"]["Enums"]["care_setting"]
-          duration: string
-          id?: string
-          position?: number
-          title: string
-        }
-        Update: {
-          candidate_id?: string
-          created_at?: string
-          care_setting?: Database["public"]["Enums"]["care_setting"]
-          duration?: string
-          id?: string
-          position?: number
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_experiences_candidate_id_fkey"
-            columns: ["candidate_id"]
-            referencedRelation: "candidates"
-            referencedColumns: ["id"]
-          }
-        ]
       }
     }
     Views: {
@@ -86,7 +73,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      care_setting: "domicilio_geriatrico" | "hospitalario" | "urgencias"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never

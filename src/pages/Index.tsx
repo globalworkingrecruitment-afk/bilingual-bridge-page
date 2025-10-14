@@ -98,11 +98,6 @@ const Index = () => {
               {currentUser?.role === "admin" ? "Administrator" : "User"}
             </Badge>
           </div>
-          {currentUser?.role === "admin" && (
-            <Button variant="secondary" size="sm" onClick={() => navigate("/admin") }>
-              Admin panel
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Log out
           </Button>

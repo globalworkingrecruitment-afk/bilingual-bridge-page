@@ -1,160 +1,227 @@
 import { Candidate } from "@/types/candidate";
 
-const coverLetter = (lines: string[]): string => lines.join("\n");
+const joinParagraphs = (lines: string[]): string => lines.join("\n");
+const summarize = (lines: string[]): string => lines.slice(0, 2).join(" ");
 
 export const mockCandidates: Candidate[] = [
   {
     id: "1",
     full_name: "Ana Martínez",
-    birth_year: 1988,
-    cover_letter: coverLetter([
+    profession: "Enfermera geriátrica",
+    experience:
+      "Supervisión en residencia geriátrica (4 años)\nCoordinación de cuidados paliativos (3 años)\nFormación interna en seguridad del paciente (1 año)",
+    languages: "Español (nativo), Inglés (B2)",
+    cover_letter_summary: summarize([
+      "Soy enfermera titulada con vocación por la geriatría y el acompañamiento integral.",
+      "Me adapto con rapidez a entornos multiculturales y equipos multidisciplinares.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Soy enfermera titulada con vocación por la geriatría y el acompañamiento integral.",
       "Me adapto con rapidez a entornos multiculturales y equipos multidisciplinares.",
       "Disfruto creando planes de cuidado personalizados junto a las familias.",
       "Busco aportar estabilidad y continuidad a los pacientes crónicos.",
       "Valoro la comunicación abierta con colegas y gestores de residencias.",
-      "Estoy lista para integrarme en nuevos dispositivos asistenciales en Noruega."
+      "Estoy lista para integrarme en nuevos dispositivos asistenciales en Noruega.",
     ]),
+    education: "Grado en Enfermería - Universidad de Salamanca (2010)",
+    birth_date: "1988-03-12",
+    email: "ana.martinez@example.com",
+    phone: "+34 600 123 456",
     experiences: [
       {
         title: "Supervisión en residencia geriátrica",
         duration: "4 años",
-        care_setting: "domicilio_geriatrico"
+        care_setting: "domicilio_geriatrico",
       },
       {
         title: "Coordinación de cuidados paliativos",
         duration: "3 años",
-        care_setting: "hospitalario"
+        care_setting: "hospitalario",
       },
       {
         title: "Formación interna en seguridad del paciente",
         duration: "1 año",
-        care_setting: "hospitalario"
-      }
-    ]
+        care_setting: "hospitalario",
+      },
+    ],
   },
   {
     id: "2",
     full_name: "Carlos Rodríguez",
-    birth_year: 1990,
-    cover_letter: coverLetter([
+    profession: "Enfermero de urgencias",
+    experience:
+      "Enfermería en urgencias hospitalarias (5 años)\nResponsable de triaje en emergencias (1 año)",
+    languages: "Español (nativo), Inglés (C1)",
+    cover_letter_summary: summarize([
+      "Profesional de enfermería enfocado en la atención de urgencias y la medicina crítica.",
+      "He gestionado turnos de alta demanda asegurando protocolos y tiempos de respuesta.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Profesional de enfermería enfocado en la atención de urgencias y la medicina crítica.",
       "He gestionado turnos de alta demanda asegurando protocolos y tiempos de respuesta.",
       "Me motiva trabajar en equipos coordinados donde el apoyo mutuo es esencial.",
       "Mantengo la calma frente a escenarios de presión y priorizo la seguridad del paciente.",
       "Comparto conocimiento con colegas mediante simulaciones y sesiones clínicas.",
-      "Quiero seguir creciendo en hospitales nórdicos con tecnologías avanzadas."
+      "Quiero seguir creciendo en hospitales nórdicos con tecnologías avanzadas.",
     ]),
+    education: "Grado en Enfermería - Universidad Complutense de Madrid (2012)",
+    birth_date: "1990-07-04",
+    email: "carlos.rodriguez@example.com",
+    phone: "+34 600 234 567",
     experiences: [
       {
         title: "Enfermería en urgencias hospitalarias",
         duration: "5 años",
-        care_setting: "urgencias"
+        care_setting: "urgencias",
       },
       {
         title: "Responsable de triaje en emergencias",
         duration: "1 año",
-        care_setting: "urgencias"
-      }
-    ]
+        care_setting: "urgencias",
+      },
+    ],
   },
   {
     id: "3",
     full_name: "María López",
-    birth_year: 1985,
-    cover_letter: coverLetter([
+    profession: "Fisioterapeuta neurológica",
+    experience:
+      "Rehabilitación neurológica hospitalaria (6 años)\nPrograma de fisioterapia domiciliaria (2 años)\nConsultas ambulatorias geriátricas (2 años)",
+    languages: "Español (nativo), Inglés (B2), Noruego (A2)",
+    cover_letter_summary: summarize([
+      "Fisioterapeuta dedicada a la rehabilitación neurológica y geriátrica integral.",
+      "Trabajo estrechamente con terapeutas ocupacionales y médicos rehabilitadores.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Fisioterapeuta dedicada a la rehabilitación neurológica y geriátrica integral.",
       "Trabajo estrechamente con terapeutas ocupacionales y médicos rehabilitadores.",
       "Me enfoco en objetivos funcionales medibles y seguimiento continuo.",
       "Promuevo la autonomía del paciente con planes de ejercicios individualizados.",
       "Me entusiasma introducir terapias basadas en evidencia científica.",
-      "Busco aportar mi experiencia en centros escandinavos especializados."
+      "Busco aportar mi experiencia en centros escandinavos especializados.",
     ]),
+    education: "Grado en Fisioterapia - Universidad de Valencia (2007)",
+    birth_date: "1985-11-21",
+    email: "maria.lopez@example.com",
+    phone: "+34 600 345 678",
     experiences: [
       {
         title: "Rehabilitación neurológica hospitalaria",
         duration: "6 años",
-        care_setting: "hospitalario"
+        care_setting: "hospitalario",
       },
       {
         title: "Programa de fisioterapia domiciliaria",
         duration: "2 años",
-        care_setting: "domicilio_geriatrico"
+        care_setting: "domicilio_geriatrico",
       },
       {
         title: "Consultas ambulatorias geriátricas",
         duration: "2 años",
-        care_setting: "domicilio_geriatrico"
-      }
-    ]
+        care_setting: "domicilio_geriatrico",
+      },
+    ],
   },
   {
     id: "4",
     full_name: "Juan Sánchez",
-    birth_year: 1989,
-    cover_letter: coverLetter([
+    profession: "Enfermero de cuidados intensivos",
+    experience:
+      "Cuidados intensivos polivalentes (4 años)\nUnidad de recuperación postquirúrgica (2 años)\nEquipo de respuesta rápida hospitalaria (1 año)",
+    languages: "Español (nativo), Inglés (B2)",
+    cover_letter_summary: summarize([
+      "Especialista en cuidados intensivos con sólida base en soporte ventilatorio.",
+      "Participo activamente en comités de seguridad clínica y simulacros.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Especialista en cuidados intensivos con sólida base en soporte ventilatorio.",
       "Participo activamente en comités de seguridad clínica y simulacros.",
       "Me interesa implementar protocolos de sedación y analgesia basados en guías.",
       "Valoro la formación continua y la mentoría de personal junior.",
       "Colaboro con anestesistas y perfusionistas para planes integrales.",
-      "Aspiro a integrarme en UCI con enfoque humano y alta tecnología."
+      "Aspiro a integrarme en UCI con enfoque humano y alta tecnología.",
     ]),
+    education: "Máster en Cuidados Críticos - Universidad de Barcelona (2015)",
+    birth_date: "1989-02-17",
+    email: "juan.sanchez@example.com",
+    phone: "+34 600 456 789",
     experiences: [
       {
         title: "Cuidados intensivos polivalentes",
         duration: "4 años",
-        care_setting: "hospitalario"
+        care_setting: "hospitalario",
       },
       {
         title: "Unidad de recuperación postquirúrgica",
         duration: "2 años",
-        care_setting: "hospitalario"
+        care_setting: "hospitalario",
       },
       {
         title: "Equipo de respuesta rápida hospitalaria",
         duration: "1 año",
-        care_setting: "urgencias"
-      }
-    ]
+        care_setting: "urgencias",
+      },
+    ],
   },
   {
     id: "5",
     full_name: "Laura Fernández",
-    birth_year: 1992,
-    cover_letter: coverLetter([
+    profession: "Enfermera comunitaria",
+    experience:
+      "Atención domiciliaria crónica (3 años)\nEducación sanitaria comunitaria (2 años)",
+    languages: "Español (nativo), Inglés (B1), Noruego (A2)",
+    cover_letter_summary: summarize([
+      "Enfermera comunitaria orientada a la atención domiciliaria y educación sanitaria.",
+      "Disfruto coordinando agendas y recursos con trabajadores sociales.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Enfermera comunitaria orientada a la atención domiciliaria y educación sanitaria.",
       "Disfruto coordinando agendas y recursos con trabajadores sociales.",
       "Fomento la adherencia terapéutica mediante visitas periódicas y seguimiento.",
       "Apoyo a cuidadores informales con pautas claras y material educativo.",
       "Participo en campañas de prevención y vacunación en barrios vulnerables.",
-      "Quiero trasladar esta experiencia a municipios noruegos en crecimiento."
+      "Quiero trasladar esta experiencia a municipios noruegos en crecimiento.",
     ]),
+    education: "Grado en Enfermería Comunitaria - Universidad de Zaragoza (2014)",
+    birth_date: "1992-09-08",
+    email: "laura.fernandez@example.com",
+    phone: "+34 600 567 890",
     experiences: [
       {
         title: "Atención domiciliaria crónica",
         duration: "3 años",
-        care_setting: "domicilio_geriatrico"
+        care_setting: "domicilio_geriatrico",
       },
       {
         title: "Educación sanitaria comunitaria",
         duration: "2 años",
-        care_setting: "domicilio_geriatrico"
-      }
-    ]
+        care_setting: "domicilio_geriatrico",
+      },
+    ],
   },
   {
     id: "6",
     full_name: "Nora Aguilar",
-    birth_year: 1995,
-    cover_letter: coverLetter([
+    profession: "Enfermera junior de atención primaria",
+    experience:
+      "Prácticas clínicas hospitalarias (1 año)\nVoluntariado en campañas de vacunación (6 meses)",
+    languages: "Español (nativo), Inglés (B2)",
+    cover_letter_summary: summarize([
+      "Enfermera recién graduada con fuerte motivación por la medicina familiar.",
+      "He complementado mis prácticas con voluntariado en campañas de salud.",
+    ]),
+    cover_letter_full: joinParagraphs([
       "Enfermera recién graduada con fuerte motivación por la medicina familiar.",
       "He complementado mis prácticas con voluntariado en campañas de salud.",
       "Tengo facilidad para aprender idiomas y adaptarme a nuevos protocolos.",
       "Busco un entorno donde pueda desarrollar habilidades clínicas sólidas.",
       "Aporto actitud proactiva, escucha activa y trabajo colaborativo.",
-      "Deseo iniciar mi carrera profesional en atención primaria noruega."
+      "Deseo iniciar mi carrera profesional en atención primaria noruega.",
     ]),
-    experiences: []
-  }
+    education: "Grado en Enfermería - Universidad de Granada (2023)",
+    birth_date: "1995-05-29",
+    email: "nora.aguilar@example.com",
+    phone: "+34 600 678 901",
+    experiences: [],
+  },
 ];

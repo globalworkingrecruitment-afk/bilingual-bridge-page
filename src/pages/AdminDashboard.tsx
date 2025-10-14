@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ const AdminDashboard = () => {
     setIsCreatingUser(true);
 
     try {
-      const createdUser = addUser(newUserUsername, newUserPassword, newUserName);
+      const createdUser = addUser(newUserUsername, newUserPassword, newUserName, newUserEmail);
       setUsers((previous) => [...previous, createdUser]);
       setLogs(getAccessLogs());
       toast({
@@ -45,6 +46,7 @@ const AdminDashboard = () => {
       setNewUserUsername("");
       setNewUserPassword("");
       setNewUserName("");
+      setNewUserEmail("");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "No se pudo crear el usuario.";
       toast({ title: "Error al crear usuario", description: message, variant: "destructive" });
@@ -137,7 +139,7 @@ const AdminDashboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-4 md:grid-cols-3" onSubmit={handleAddUser}>
+            <form className="grid gap-4 md:grid-cols-4" onSubmit={handleAddUser}>
               <div className="space-y-2">
                 <Label htmlFor="new-user-name">Nombre completo</Label>
                 <Input
@@ -158,6 +160,16 @@ const AdminDashboard = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="new-user-email">Correo electrónico (opcional)</Label>
+                <Input
+                  id="new-user-email"
+                  type="email"
+                  placeholder="empleador@empresa.com"
+                  value={newUserEmail}
+                  onChange={(event) => setNewUserEmail(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="new-user-password">Contraseña temporal</Label>
                 <Input
                   id="new-user-password"
@@ -168,7 +180,7 @@ const AdminDashboard = () => {
                   required
                 />
               </div>
-              <div className="md:col-span-3 flex justify-end">
+              <div className="md:col-span-4 flex justify-end">
                 <Button type="submit" disabled={isCreatingUser}>
                   {isCreatingUser ? "Creando..." : "Guardar usuario"}
                 </Button>
@@ -191,6 +203,7 @@ const AdminDashboard = () => {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Usuario</TableHead>
+                    <TableHead>Correo</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Creado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -201,6 +214,7 @@ const AdminDashboard = () => {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.fullName ?? "Sin especificar"}</TableCell>
                       <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.email ?? "Sin email"}</TableCell>
                       <TableCell>
                         <Badge variant={user.isActive ? "default" : "secondary"}>
                           {user.isActive ? "Activo" : "Inactivo"}

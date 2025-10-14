@@ -35,21 +35,26 @@ export const englishContent = {
     }
   },
   search: {
-    placeholder: "Search by name, experience or cover letter...",
+    placeholder: "Search by name, profession or summary...",
     button: "Search"
   },
   candidateCard: {
-    age: "Age",
-    yearsOld: "years old",
-    coverLetter: "Cover Letter",
-    experiences: "Medical Experience",
+    profession: "Role",
+    languages: "Languages",
+    education: "Education",
+    summary: "Cover letter summary",
+    experiences: "Clinical Experience",
+    experienceOverview: "Experience Overview",
+    coverLetterFull: "Complete cover letter",
+    openDetails: "View full profile",
+    detailDescription: "Review the candidate's education and full cover letter.",
     noExperience: "No recorded medical experience yet"
   },
   auth: {
     title: "Access Your Account",
-    subtitle: "Sign in with your username and password to continue",
-    usernameLabel: "Username",
-    usernamePlaceholder: "yourusername",
+    subtitle: "Sign in with your username or email and password to continue",
+    usernameLabel: "Username or email",
+    usernamePlaceholder: "yourusername@example.com",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter your password",
     loginButton: "Sign in",
