@@ -156,9 +156,10 @@ export const candidateMatchesCriteria = (
   } = criteria;
 
   if (requiredCareSettings.length > 0) {
-    const hasAllRequiredExperiences = requiredCareSettings.every(setting =>
-      candidate.experiences.some(experience => experience.care_setting === setting),
-    );
+    const candidateSetting = candidate.experienceDetail?.care_setting;
+    const hasAllRequiredExperiences =
+      typeof candidateSetting === "string" &&
+      requiredCareSettings.every(setting => setting === candidateSetting);
 
     if (!hasAllRequiredExperiences) {
       return false;
@@ -197,7 +198,9 @@ export const candidateMatchesCriteria = (
       candidate.cover_letter_summary,
       candidate.cover_letter_full,
       candidate.experience,
-      candidate.experiences.map(experience => `${experience.title} ${experience.duration}`),
+      candidate.experienceDetail
+        ? `${candidate.experienceDetail.title} ${candidate.experienceDetail.duration}`
+        : "",
     ]
       .flat()
       .join(" "),

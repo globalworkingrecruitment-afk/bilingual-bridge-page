@@ -41,10 +41,11 @@ const Index = () => {
     ]);
 
     mockCandidates.forEach(candidate => {
-      candidate.experiences.forEach(experience => {
-        const bucket = counts.get(experience.care_setting);
-        bucket?.add(candidate.id);
-      });
+      const setting = candidate.experienceDetail?.care_setting;
+      if (!setting) return;
+
+      const bucket = counts.get(setting);
+      bucket?.add(candidate.id);
     });
 
     const order: CareSetting[] = [
@@ -67,7 +68,7 @@ const Index = () => {
   const filteredCandidates = useMemo(() => {
     return mockCandidates.filter((candidate: Candidate) => {
       const matchesSelectedExperience = selectedSetting
-        ? candidate.experiences.some(experience => experience.care_setting === selectedSetting)
+        ? candidate.experienceDetail?.care_setting === selectedSetting
         : true;
 
       if (!matchesSelectedExperience) {

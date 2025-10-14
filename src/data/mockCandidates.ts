@@ -8,8 +8,7 @@ export const mockCandidates: Candidate[] = [
     id: "1",
     full_name: "Ana Martínez",
     profession: "Enfermera geriátrica",
-    experience:
-      "Supervisión en residencia geriátrica (4 años)\nCoordinación de cuidados paliativos (3 años)\nFormación interna en seguridad del paciente (1 año)",
+    experience: "Supervisión en residencia geriátrica (4 años)",
     languages: "Español (nativo), Inglés (B2)",
     cover_letter_summary: summarize([
       "Soy enfermera titulada con vocación por la geriatría y el acompañamiento integral.",
@@ -27,30 +26,17 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1988-03-12",
     email: "ana.martinez@example.com",
     phone: "+34 600 123 456",
-    experiences: [
-      {
-        title: "Supervisión en residencia geriátrica",
-        duration: "4 años",
-        care_setting: "domicilio_geriatrico",
-      },
-      {
-        title: "Coordinación de cuidados paliativos",
-        duration: "3 años",
-        care_setting: "hospitalario",
-      },
-      {
-        title: "Formación interna en seguridad del paciente",
-        duration: "1 año",
-        care_setting: "hospitalario",
-      },
-    ],
+    experienceDetail: {
+      title: "Supervisión en residencia geriátrica",
+      duration: "4 años",
+      care_setting: "domicilio_geriatrico",
+    },
   },
   {
     id: "2",
     full_name: "Carlos Rodríguez",
     profession: "Enfermero de urgencias",
-    experience:
-      "Enfermería en urgencias hospitalarias (5 años)\nResponsable de triaje en emergencias (1 año)",
+    experience: "Enfermería en urgencias hospitalarias (5 años)",
     languages: "Español (nativo), Inglés (C1)",
     cover_letter_summary: summarize([
       "Profesional de enfermería enfocado en la atención de urgencias y la medicina crítica.",
@@ -68,25 +54,17 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1990-07-04",
     email: "carlos.rodriguez@example.com",
     phone: "+34 600 234 567",
-    experiences: [
-      {
-        title: "Enfermería en urgencias hospitalarias",
-        duration: "5 años",
-        care_setting: "urgencias",
-      },
-      {
-        title: "Responsable de triaje en emergencias",
-        duration: "1 año",
-        care_setting: "urgencias",
-      },
-    ],
+    experienceDetail: {
+      title: "Enfermería en urgencias hospitalarias",
+      duration: "5 años",
+      care_setting: "urgencias",
+    },
   },
   {
     id: "3",
     full_name: "María López",
     profession: "Fisioterapeuta neurológica",
-    experience:
-      "Rehabilitación neurológica hospitalaria (6 años)\nPrograma de fisioterapia domiciliaria (2 años)\nConsultas ambulatorias geriátricas (2 años)",
+    experience: "Rehabilitación neurológica hospitalaria (6 años)",
     languages: "Español (nativo), Inglés (B2), Noruego (A2)",
     cover_letter_summary: summarize([
       "Fisioterapeuta dedicada a la rehabilitación neurológica y geriátrica integral.",
@@ -104,30 +82,17 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1985-11-21",
     email: "maria.lopez@example.com",
     phone: "+34 600 345 678",
-    experiences: [
-      {
-        title: "Rehabilitación neurológica hospitalaria",
-        duration: "6 años",
-        care_setting: "hospitalario",
-      },
-      {
-        title: "Programa de fisioterapia domiciliaria",
-        duration: "2 años",
-        care_setting: "domicilio_geriatrico",
-      },
-      {
-        title: "Consultas ambulatorias geriátricas",
-        duration: "2 años",
-        care_setting: "domicilio_geriatrico",
-      },
-    ],
+    experienceDetail: {
+      title: "Rehabilitación neurológica hospitalaria",
+      duration: "6 años",
+      care_setting: "hospitalario",
+    },
   },
   {
     id: "4",
     full_name: "Juan Sánchez",
     profession: "Enfermero de cuidados intensivos",
-    experience:
-      "Cuidados intensivos polivalentes (4 años)\nUnidad de recuperación postquirúrgica (2 años)\nEquipo de respuesta rápida hospitalaria (1 año)",
+    experience: "Cuidados intensivos polivalentes (4 años)",
     languages: "Español (nativo), Inglés (B2)",
     cover_letter_summary: summarize([
       "Especialista en cuidados intensivos con sólida base en soporte ventilatorio.",
@@ -145,30 +110,17 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1989-02-17",
     email: "juan.sanchez@example.com",
     phone: "+34 600 456 789",
-    experiences: [
-      {
-        title: "Cuidados intensivos polivalentes",
-        duration: "4 años",
-        care_setting: "hospitalario",
-      },
-      {
-        title: "Unidad de recuperación postquirúrgica",
-        duration: "2 años",
-        care_setting: "hospitalario",
-      },
-      {
-        title: "Equipo de respuesta rápida hospitalaria",
-        duration: "1 año",
-        care_setting: "urgencias",
-      },
-    ],
+    experienceDetail: {
+      title: "Cuidados intensivos polivalentes",
+      duration: "4 años",
+      care_setting: "hospitalario",
+    },
   },
   {
     id: "5",
     full_name: "Laura Fernández",
     profession: "Enfermera comunitaria",
-    experience:
-      "Atención domiciliaria crónica (3 años)\nEducación sanitaria comunitaria (2 años)",
+    experience: "Atención domiciliaria crónica (3 años)",
     languages: "Español (nativo), Inglés (B1), Noruego (A2)",
     cover_letter_summary: summarize([
       "Enfermera comunitaria orientada a la atención domiciliaria y educación sanitaria.",
@@ -186,25 +138,17 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1992-09-08",
     email: "laura.fernandez@example.com",
     phone: "+34 600 567 890",
-    experiences: [
-      {
-        title: "Atención domiciliaria crónica",
-        duration: "3 años",
-        care_setting: "domicilio_geriatrico",
-      },
-      {
-        title: "Educación sanitaria comunitaria",
-        duration: "2 años",
-        care_setting: "domicilio_geriatrico",
-      },
-    ],
+    experienceDetail: {
+      title: "Atención domiciliaria crónica",
+      duration: "3 años",
+      care_setting: "domicilio_geriatrico",
+    },
   },
   {
     id: "6",
     full_name: "Nora Aguilar",
     profession: "Enfermera junior de atención primaria",
-    experience:
-      "Prácticas clínicas hospitalarias (1 año)\nVoluntariado en campañas de vacunación (6 meses)",
+    experience: "Prácticas clínicas hospitalarias (1 año)",
     languages: "Español (nativo), Inglés (B2)",
     cover_letter_summary: summarize([
       "Enfermera recién graduada con fuerte motivación por la medicina familiar.",
@@ -222,6 +166,10 @@ export const mockCandidates: Candidate[] = [
     birth_date: "1995-05-29",
     email: "nora.aguilar@example.com",
     phone: "+34 600 678 901",
-    experiences: [],
+    experienceDetail: {
+      title: "Prácticas clínicas hospitalarias",
+      duration: "1 año",
+      care_setting: "hospitalario",
+    },
   },
 ];
