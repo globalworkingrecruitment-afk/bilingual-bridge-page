@@ -337,6 +337,34 @@ export const toggleUserStatus = (userId: string): AppUser | null => {
   return updatedUsers.find((user) => user.id === userId) ?? null;
 };
 
+export const updateUserEmail = (userId: string, email: string): AppUser | null => {
+  const users = getUsers();
+  const normalizedEmail = email.trim();
+
+  if (!normalizedEmail) {
+    throw new Error("El correo electrónico es obligatorio.");
+  }
+
+  const emailAlreadyUsed = users.some((user) => {
+    if (user.id === userId) return false;
+    return user.email?.trim().toLowerCase() === normalizedEmail.toLowerCase();
+  });
+
+  if (emailAlreadyUsed) {
+    throw new Error("Ya existe un usuario con este correo electrónico.");
+  }
+
+  const updatedUsers = users.map((user) => {
+    if (user.id !== userId) return user;
+
+    return { ...user, email: normalizedEmail };
+  });
+
+  writeToStorage(USERS_KEY, updatedUsers);
+
+  return updatedUsers.find((user) => user.id === userId) ?? null;
+};
+
 export const removeUser = (userId: string) => {
   const users = getUsers();
   const removedUser = users.find((user) => user.id === userId);
