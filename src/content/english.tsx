@@ -48,7 +48,8 @@ export const englishContent = {
     coverLetterFull: "Complete cover letter",
     openDetails: "View full profile",
     detailDescription: "Review the candidate's education and full cover letter.",
-    noExperience: "No recorded medical experience yet"
+    noExperience: "No recorded medical experience yet",
+    scheduleMeeting: "Schedule meeting",
   },
   auth: {
     title: "Access Your Account",

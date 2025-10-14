@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { AppUser, AccessLog, CandidateViewLog } from "@/types/auth";
+import { ScheduleRequestLog } from "@/types/schedule";
 import {
   addUser,
   getAccessLogs,
   getUsers,
   toggleUserStatus,
   getCandidateViewsByUser,
-  updateUserEmail,
+  getScheduleRequests,
 } from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -19,34 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { mockCandidates } from "@/data/mockCandidates";
-
-type ScheduleStep = "email" | "availability" | "confirm";
-
-interface ScheduleCandidateOption {
-  id: string;
-  name: string;
-  email?: string;
-}
-
-const SCHEDULE_WEBHOOK_URL =
-  "https://primary-production-cdb3.up.railway.app/webhook-test/6669a30e-b24c-46ac-a0d3-20859ffe133c";
 
 const AdminDashboard = () => {
   const { currentUser, logout } = useAuth();
@@ -61,33 +33,13 @@ const AdminDashboard = () => {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
-  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [scheduleStep, setScheduleStep] = useState<ScheduleStep>("email");
-  const [scheduleEmployerEmail, setScheduleEmployerEmail] = useState("");
-  const [scheduleAvailability, setScheduleAvailability] = useState("");
-  const [scheduleCandidateId, setScheduleCandidateId] = useState<string | null>(null);
-  const [scheduleCandidateName, setScheduleCandidateName] = useState("");
-  const [scheduleCandidateEmail, setScheduleCandidateEmail] = useState("");
-  const [scheduleUser, setScheduleUser] = useState<AppUser | null>(null);
-  const [scheduleCandidates, setScheduleCandidates] = useState<ScheduleCandidateOption[]>([]);
-  const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
-
-  const resetScheduleDialog = () => {
-    setScheduleStep("email");
-    setScheduleEmployerEmail("");
-    setScheduleAvailability("");
-    setScheduleCandidateId(null);
-    setScheduleCandidateName("");
-    setScheduleCandidateEmail("");
-    setScheduleUser(null);
-    setScheduleCandidates([]);
-    setIsSubmittingSchedule(false);
-  };
+  const [meetingRequests, setMeetingRequests] = useState<ScheduleRequestLog[]>([]);
 
   useEffect(() => {
     setUsers(getUsers());
     setLogs(getAccessLogs());
     setCandidateViews(getCandidateViewsByUser());
+    setMeetingRequests(getScheduleRequests());
   }, []);
 
   const activeUsers = useMemo(() => users.filter((user) => user.isActive).length, [users]);
@@ -99,179 +51,6 @@ const AdminDashboard = () => {
     },
     [candidateViews],
   );
-
-  const closeScheduleDialog = () => {
-    setIsScheduleDialogOpen(false);
-    resetScheduleDialog();
-  };
-
-  const handleOpenScheduleDialog = (user: AppUser) => {
-    const views = getViewsForUser(user.username);
-
-    if (views.length === 0) {
-      toast({
-        title: "Sin candidatos registrados",
-        description: "Este empleador aún no ha visitado candidatos para agendar una reunión.",
-      });
-      return;
-    }
-
-    const candidateOptions = views.reduce<ScheduleCandidateOption[]>((accumulator, view) => {
-      if (accumulator.some((option) => option.id === view.candidateId)) {
-        return accumulator;
-      }
-
-      const candidateDetails = mockCandidates.find((candidate) => candidate.id === view.candidateId);
-      accumulator.push({
-        id: view.candidateId,
-        name: view.candidateName,
-        email: candidateDetails?.email,
-      });
-      return accumulator;
-    }, []);
-
-    if (candidateOptions.length === 0) {
-      toast({
-        title: "No hay candidatos disponibles",
-        description: "No se encontraron candidatos válidos para agendar la reunión.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    resetScheduleDialog();
-    setScheduleUser(user);
-    setScheduleCandidates(candidateOptions);
-    const defaultCandidate = candidateOptions[0];
-    setScheduleCandidateId(defaultCandidate?.id ?? null);
-    setScheduleCandidateName(defaultCandidate?.name ?? "");
-    setScheduleCandidateEmail(defaultCandidate?.email ?? "");
-    setScheduleEmployerEmail(user.email ?? "");
-    setScheduleStep(user.email ? "availability" : "email");
-    setIsScheduleDialogOpen(true);
-  };
-
-  const handleCandidateChange = (candidateId: string) => {
-    setScheduleCandidateId(candidateId);
-    const selectedCandidate = scheduleCandidates.find((candidate) => candidate.id === candidateId);
-    if (selectedCandidate) {
-      setScheduleCandidateName(selectedCandidate.name);
-      setScheduleCandidateEmail(selectedCandidate.email ?? "");
-    } else {
-      setScheduleCandidateName("");
-      setScheduleCandidateEmail("");
-    }
-  };
-
-  const handleEmployerEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!scheduleUser) return;
-
-    const normalizedEmail = scheduleEmployerEmail.trim();
-    if (!normalizedEmail) {
-      toast({
-        title: "Correo requerido",
-        description: "Necesitamos un correo electrónico para continuar con la solicitud.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const updatedUser = updateUserEmail(scheduleUser.id, normalizedEmail);
-      if (updatedUser) {
-        setUsers((previous) => previous.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
-        setScheduleUser(updatedUser);
-        setScheduleEmployerEmail(updatedUser.email ?? "");
-      }
-      setScheduleStep("availability");
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo guardar el correo electrónico del empleador.";
-      toast({ title: "Error al guardar", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleAvailabilitySubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!scheduleCandidateId) {
-      toast({
-        title: "Selecciona un candidato",
-        description: "Debes elegir un candidato para continuar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const normalizedCandidateEmail = scheduleCandidateEmail.trim();
-    const normalizedAvailability = scheduleAvailability.trim();
-
-    if (!normalizedCandidateEmail) {
-      toast({
-        title: "Correo del candidato requerido",
-        description: "Incluye un correo de contacto para el candidato.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!normalizedAvailability) {
-      toast({
-        title: "Disponibilidad requerida",
-        description: "Describe la disponibilidad propuesta para la reunión.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setScheduleCandidateEmail(normalizedCandidateEmail);
-    setScheduleAvailability(normalizedAvailability);
-    setScheduleStep("confirm");
-  };
-
-  const handleConfirmSchedule = async () => {
-    if (!scheduleUser || !scheduleCandidateId) {
-      return;
-    }
-
-    const payload = {
-      emailEmpleador: scheduleEmployerEmail.trim(),
-      emailCandidato: scheduleCandidateEmail.trim(),
-      NombreCandidato: scheduleCandidateName,
-      disponibilidad: scheduleAvailability.trim(),
-    };
-
-    setIsSubmittingSchedule(true);
-
-    try {
-      const response = await fetch(SCHEDULE_WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "El servicio de agenda respondió con un error.");
-      }
-
-      toast({
-        title: "Solicitud enviada",
-        description: "La disponibilidad fue enviada para coordinar la reunión.",
-      });
-      closeScheduleDialog();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo completar la solicitud de reunión.";
-      toast({ title: "Error al agendar", description: message, variant: "destructive" });
-    } finally {
-      setIsSubmittingSchedule(false);
-    }
-  };
 
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -314,6 +93,7 @@ const AdminDashboard = () => {
   const handleRefreshData = () => {
     setLogs(getAccessLogs());
     setCandidateViews(getCandidateViewsByUser());
+    setMeetingRequests(getScheduleRequests());
     toast({ title: "Registros actualizados" });
   };
 
@@ -501,22 +281,9 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              size="icon"
-                              className="h-9 w-9 bg-emerald-500 text-white hover:bg-emerald-600"
-                              onClick={() => handleOpenScheduleDialog(user)}
-                              aria-label="Agendar reunión con candidato"
-                              title="Agendar reunión"
-                              disabled={views.length === 0}
-                            >
-                              <Calendar className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
-                              {user.isActive ? "Deshabilitar" : "Habilitar"}
-                            </Button>
-                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
+                            {user.isActive ? "Deshabilitar" : "Habilitar"}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -530,12 +297,61 @@ const AdminDashboard = () => {
         <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
           <CardHeader className="flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle>Registro de accesos</CardTitle>
-              <CardDescription>Consulta quién ingresó a la aplicación y cuándo lo hizo.</CardDescription>
+              <CardTitle>Solicitudes de reunión</CardTitle>
+              <CardDescription>
+                Consulta las solicitudes enviadas desde las fichas de candidatos.
+              </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={handleRefreshData}>
               Actualizar
             </Button>
+          </CardHeader>
+          <CardContent>
+            {meetingRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aún no se han enviado solicitudes de reunión.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Empleador</TableHead>
+                    <TableHead>Candidato</TableHead>
+                    <TableHead>Disponibilidad propuesta</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {meetingRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell>{new Date(request.requestedAt).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">
+                            {request.employerName || request.employerUsername}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{request.employerEmail}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">{request.candidateName}</p>
+                          <p className="text-xs text-muted-foreground">{request.candidateEmail}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-pre-wrap text-sm text-muted-foreground">
+                        {request.availability}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+          <CardHeader>
+            <CardTitle>Registro de accesos</CardTitle>
+            <CardDescription>Consulta quién ingresó a la aplicación y cuándo lo hizo.</CardDescription>
           </CardHeader>
           <CardContent>
             {logs.length === 0 ? (
@@ -563,153 +379,6 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        <Dialog
-          open={isScheduleDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              closeScheduleDialog();
-            }
-          }}
-        >
-          <DialogContent>
-            {scheduleStep === "email" && (
-              <form className="space-y-6" onSubmit={handleEmployerEmailSubmit}>
-                <DialogHeader>
-                  <DialogTitle>Agendar reunión</DialogTitle>
-                  <DialogDescription>
-                    Necesitamos un correo electrónico del empleador para compartir los detalles con el candidato seleccionado.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <Label htmlFor="schedule-employer-email">Correo del empleador</Label>
-                  <Input
-                    id="schedule-employer-email"
-                    type="email"
-                    placeholder="empleador@empresa.com"
-                    value={scheduleEmployerEmail}
-                    onChange={(event) => setScheduleEmployerEmail(event.target.value)}
-                    required
-                  />
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={closeScheduleDialog}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">Continuar</Button>
-                </DialogFooter>
-              </form>
-            )}
-
-            {scheduleStep === "availability" && (
-              <form className="space-y-6" onSubmit={handleAvailabilitySubmit}>
-                <DialogHeader>
-                  <DialogTitle>Definir disponibilidad</DialogTitle>
-                  <DialogDescription>
-                    Selecciona al candidato que quieres contactar y comparte los horarios sugeridos para la reunión.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule-candidate">Candidato</Label>
-                    <Select value={scheduleCandidateId ?? undefined} onValueChange={handleCandidateChange}>
-                      <SelectTrigger id="schedule-candidate">
-                        <SelectValue placeholder="Selecciona un candidato" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {scheduleCandidates.map((candidate) => (
-                          <SelectItem key={candidate.id} value={candidate.id}>
-                            {candidate.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule-candidate-email">Correo del candidato</Label>
-                    <Input
-                      id="schedule-candidate-email"
-                      type="email"
-                      placeholder="candidato@correo.com"
-                      value={scheduleCandidateEmail}
-                      onChange={(event) => setScheduleCandidateEmail(event.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule-availability">Disponibilidad propuesta</Label>
-                    <Textarea
-                      id="schedule-availability"
-                      placeholder="Indica fechas y horarios que propones para la reunión"
-                      value={scheduleAvailability}
-                      onChange={(event) => setScheduleAvailability(event.target.value)}
-                      rows={4}
-                      required
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="ghost" onClick={closeScheduleDialog}>
-                    Cancelar
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setScheduleStep("email")}>
-                    Modificar correo
-                  </Button>
-                  <Button type="submit">Continuar</Button>
-                </DialogFooter>
-              </form>
-            )}
-
-            {scheduleStep === "confirm" && (
-              <div className="space-y-6">
-                <DialogHeader>
-                  <DialogTitle>Confirmar solicitud</DialogTitle>
-                  <DialogDescription>
-                    Revisa la información y confirma para enviar la disponibilidad al candidato.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <p className="font-semibold text-foreground">Empleador</p>
-                    <p className="text-muted-foreground">
-                      {scheduleUser?.fullName || scheduleUser?.username || "Sin nombre"}
-                    </p>
-                    <p className="text-muted-foreground">{scheduleEmployerEmail}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Candidato</p>
-                    <p className="text-muted-foreground">{scheduleCandidateName || "Sin candidato"}</p>
-                    <p className="text-muted-foreground">{scheduleCandidateEmail}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Disponibilidad propuesta</p>
-                    <p className="whitespace-pre-wrap text-muted-foreground">{scheduleAvailability}</p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setScheduleStep("availability")}
-                    disabled={isSubmittingSchedule}
-                  >
-                    Volver
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={closeScheduleDialog}
-                    disabled={isSubmittingSchedule}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button type="button" onClick={handleConfirmSchedule} disabled={isSubmittingSchedule}>
-                    {isSubmittingSchedule ? "Enviando..." : "Confirmar y enviar"}
-                  </Button>
-                </DialogFooter>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

@@ -1,9 +1,11 @@
 import { AccessLog, AppUser, CandidateViewLog, SessionUser, UserRole } from "@/types/auth";
+import { ScheduleRequestLog } from "@/types/schedule";
 
 const USERS_KEY = "bbp-app-users";
 const LOGS_KEY = "bbp-access-logs";
 const SESSION_KEY = "bbp-auth-session";
 const CANDIDATE_VIEWS_KEY = "bbp-candidate-views";
+const SCHEDULE_REQUESTS_KEY = "bbp-schedule-requests";
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
@@ -66,6 +68,10 @@ export const initializeLocalDb = () => {
 
   if (!window.localStorage.getItem(CANDIDATE_VIEWS_KEY)) {
     writeToStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
+  }
+
+  if (!window.localStorage.getItem(SCHEDULE_REQUESTS_KEY)) {
+    writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
   }
 };
 
@@ -207,6 +213,85 @@ export const getCandidateViewsByUser = (): Record<string, CandidateViewLog[]> =>
     accumulator[key].push(view);
     return accumulator;
   }, {});
+};
+
+export const getScheduleRequests = (): ScheduleRequestLog[] => {
+  const stored = readFromStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
+
+  const sanitized = stored
+    .filter((request) => {
+      const hasEmployer = Boolean(request.employerUsername?.trim());
+      const hasEmployerEmail = Boolean(request.employerEmail?.trim());
+      const hasCandidate = Boolean(request.candidateId?.trim() && request.candidateName?.trim());
+      const hasCandidateEmail = Boolean(request.candidateEmail?.trim());
+      const hasAvailability = Boolean(request.availability?.trim());
+
+      return hasEmployer && hasEmployerEmail && hasCandidate && hasCandidateEmail && hasAvailability;
+    })
+    .map((request) => ({
+      ...request,
+      employerUsername: request.employerUsername.trim(),
+      employerEmail: request.employerEmail.trim(),
+      employerName: request.employerName?.trim() || undefined,
+      candidateId: request.candidateId.trim(),
+      candidateName: request.candidateName.trim(),
+      candidateEmail: request.candidateEmail.trim(),
+      availability: request.availability.trim(),
+      requestedAt: request.requestedAt,
+    }));
+
+  if (sanitized.length !== stored.length) {
+    writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, sanitized);
+  }
+
+  return sanitized.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
+};
+
+export const recordScheduleRequest = (params: {
+  employerUsername: string;
+  employerEmail: string;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  availability: string;
+  employerName?: string;
+}): ScheduleRequestLog | null => {
+  const normalizedEmployerUsername = params.employerUsername?.trim();
+  const normalizedEmployerEmail = params.employerEmail?.trim();
+  const normalizedCandidateId = params.candidateId?.trim();
+  const normalizedCandidateName = params.candidateName?.trim();
+  const normalizedCandidateEmail = params.candidateEmail?.trim();
+  const normalizedAvailability = params.availability?.trim();
+
+  if (
+    !normalizedEmployerUsername ||
+    !normalizedEmployerEmail ||
+    !normalizedCandidateId ||
+    !normalizedCandidateName ||
+    !normalizedCandidateEmail ||
+    !normalizedAvailability
+  ) {
+    return null;
+  }
+
+  const requests = readFromStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
+
+  const newRequest: ScheduleRequestLog = {
+    id: generateId(),
+    employerUsername: normalizedEmployerUsername,
+    employerEmail: normalizedEmployerEmail,
+    employerName: params.employerName?.trim() || undefined,
+    candidateId: normalizedCandidateId,
+    candidateName: normalizedCandidateName,
+    candidateEmail: normalizedCandidateEmail,
+    availability: normalizedAvailability,
+    requestedAt: new Date().toISOString(),
+  };
+
+  requests.push(newRequest);
+  writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, requests);
+
+  return newRequest;
 };
 
 export const recordCandidateView = (

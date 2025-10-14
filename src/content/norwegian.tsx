@@ -48,7 +48,8 @@ export const norwegianContent = {
     coverLetterFull: "Komplett søknadsbrev",
     openDetails: "Se hele profilen",
     detailDescription: "Les kandidatens utdanning og komplette søknadsbrev.",
-    noExperience: "Ingen registrert medisinsk erfaring ennå"
+    noExperience: "Ingen registrert medisinsk erfaring ennå",
+    scheduleMeeting: "Planlegg møte",
   },
   auth: {
     title: "Tilgang til Kontoen Din",
