@@ -35,21 +35,26 @@ export const norwegianContent = {
     }
   },
   search: {
-    placeholder: "Søk etter navn, erfaring eller presentasjonsbrev...",
+    placeholder: "Søk etter navn, rolle eller sammendrag...",
     button: "Søk"
   },
   candidateCard: {
-    age: "Alder",
-    yearsOld: "år",
-    coverLetter: "Presentasjonsbrev",
-    experiences: "Medisinsk erfaring",
+    profession: "Rolle",
+    languages: "Språk",
+    education: "Utdanning",
+    summary: "Sammendrag av søknadsbrev",
+    experiences: "Klinisk erfaring",
+    experienceOverview: "Erfaringsoversikt",
+    coverLetterFull: "Komplett søknadsbrev",
+    openDetails: "Se hele profilen",
+    detailDescription: "Les kandidatens utdanning og komplette søknadsbrev.",
     noExperience: "Ingen registrert medisinsk erfaring ennå"
   },
   auth: {
     title: "Tilgang til Kontoen Din",
-    subtitle: "Logg inn med brukernavn og passord for å fortsette",
-    usernameLabel: "Brukernavn",
-    usernamePlaceholder: "dittbrukernavn",
+    subtitle: "Logg inn med brukernavn eller e-post og passord for å fortsette",
+    usernameLabel: "Brukernavn eller e-post",
+    usernamePlaceholder: "dittbrukernavn@example.com",
     passwordLabel: "Passord",
     passwordPlaceholder: "Skriv inn passordet ditt",
     loginButton: "Logg inn",
