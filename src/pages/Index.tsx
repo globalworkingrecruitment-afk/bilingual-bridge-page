@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
@@ -22,6 +22,7 @@ const Index = () => {
   const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const candidatesSectionRef = useRef<HTMLDivElement | null>(null);
 
   const content = language === "en" ? englishContent : norwegianContent;
 
@@ -31,6 +32,10 @@ const Index = () => {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query.trim());
+  };
+
+  const scrollToCandidates = () => {
+    candidatesSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const experienceSections = useMemo(() => {
@@ -114,10 +119,10 @@ const Index = () => {
         </div>
       </div>
 
-      <Hero content={content.hero} />
+      <Hero content={content.hero} onPrimaryAction={scrollToCandidates} />
       <Stats content={content.stats} />
       
-      <section className="py-16 px-6">
+      <section ref={candidatesSectionRef} className="py-16 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
