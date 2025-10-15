@@ -14,21 +14,8 @@ export const getCandidateProfile = (
   candidate: Candidate,
   locale: CandidateLocale,
 ): CandidateLocalizedProfile => {
-  const fallback: CandidateLocalizedProfile = {
-    profession: candidate.profession,
-    experience: candidate.experience,
-    languages: candidate.languages,
-    cover_letter_summary: candidate.cover_letter_summary,
-    cover_letter_full: candidate.cover_letter_full,
-    education: candidate.education,
-  };
-
-  const translations = candidate.translations ?? {};
-  const localized = translations[locale];
-
-  if (!localized) {
-    return fallback;
-  }
+  const fallback = candidate.profile_en;
+  const localized = locale === "no" ? candidate.profile_no : candidate.profile_en;
 
   return {
     profession: localized.profession || fallback.profession,

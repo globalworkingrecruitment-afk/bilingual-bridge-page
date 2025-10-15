@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
@@ -16,12 +16,16 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { getN8nWebhookUrl } from "@/lib/env";
+
+const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
 
 const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
-  const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
+  const [webhookCandidateNames, setWebhookCandidateNames] = useState<string[]>([]);
+  const [n8nWebhook] = useState<string>(() => getN8nWebhookUrl() ?? DEFAULT_WEBHOOK_URL);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const candidatesSectionRef = useRef<HTMLDivElement | null>(null);
@@ -32,8 +36,12 @@ const Index = () => {
     setLanguage(prev => (prev === "en" ? "no" : "en"));
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query.trim());
+  const handleSearch = (query: string, candidateNames?: string[]) => {
+    const normalizedQuery = query.trim();
+    setSearchQuery(normalizedQuery);
+    setWebhookCandidateNames(
+      candidateNames?.map((name) => name.trim()).filter((name) => name.length > 0) ?? [],
+    );
   };
 
   const scrollToCandidates = () => {
@@ -72,6 +80,11 @@ const Index = () => {
 
   const searchCriteria = useMemo(() => parseSearchQuery(searchQuery), [searchQuery]);
 
+  const normalizedWebhookNames = useMemo(
+    () => new Set(webhookCandidateNames.map((name) => name.toLowerCase())),
+    [webhookCandidateNames],
+  );
+
   const filteredCandidates = useMemo(() => {
     return mockCandidates.filter((candidate: Candidate) => {
       const matchesSelectedExperience = selectedSetting
@@ -82,9 +95,19 @@ const Index = () => {
         return false;
       }
 
+      if (normalizedWebhookNames.size > 0) {
+        return normalizedWebhookNames.has(candidate.full_name.trim().toLowerCase());
+      }
+
       return candidateMatchesCriteria(candidate, searchCriteria);
     });
-  }, [searchCriteria, selectedSetting]);
+  }, [searchCriteria, selectedSetting, normalizedWebhookNames]);
+
+  useEffect(() => {
+    if (webhookCandidateNames.length > 0) {
+      candidatesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [webhookCandidateNames]);
 
   const handleSelectExperience = (setting: CareSetting | null) => {
     setSelectedSetting(prev => (prev === setting ? null : setting));
@@ -157,11 +180,13 @@ const Index = () => {
             onSelect={handleSelectExperience}
             labels={content.candidates.filters}
           />
-          <CandidatesSection
-            candidates={filteredCandidates}
-            content={content}
-            locale={language}
-          />
+          <div ref={candidatesSectionRef}>
+            <CandidatesSection
+              candidates={filteredCandidates}
+              content={content}
+              locale={language}
+            />
+          </div>
         </div>
       </section>
 

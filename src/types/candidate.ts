@@ -22,12 +22,6 @@ export interface CandidateExperience {
 export interface Candidate {
   id: string;
   full_name: string;
-  profession: string;
-  experience: string;
-  languages: string;
-  cover_letter_summary: string;
-  cover_letter_full: string;
-  education: string;
   birth_date: string;
   email: string;
   phone: string;
@@ -35,5 +29,6 @@ export interface Candidate {
   created_at?: string;
   updated_at?: string;
   experienceDetail: CandidateExperience;
-  translations?: Partial<Record<CandidateLocale, CandidateLocalizedProfile>>;
+  profile_en: CandidateLocalizedProfile;
+  profile_no: CandidateLocalizedProfile;
 }

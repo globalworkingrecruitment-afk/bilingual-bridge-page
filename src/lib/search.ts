@@ -1,4 +1,9 @@
-import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
+import {
+  Candidate,
+  CandidateLocale,
+  CandidateLocalizedProfile,
+  CareSetting,
+} from "@/types/candidate";
 import { getExperienceDuration, getExperienceTitle, isCandidateLocale } from "@/lib/candidates";
 
 interface SearchCriteria {
@@ -192,41 +197,46 @@ export const candidateMatchesCriteria = (
 
   const localizedChunks: string[] = [];
 
-  if (candidate.translations) {
-    for (const [localeKey, profile] of Object.entries(candidate.translations)) {
-      if (!profile || !isCandidateLocale(localeKey)) {
-        continue;
-      }
+  const localeProfiles: Record<CandidateLocale, CandidateLocalizedProfile> = {
+    en: candidate.profile_en,
+    no: candidate.profile_no,
+  };
 
-      const typedLocale = localeKey as CandidateLocale;
+  for (const [localeKey, profile] of Object.entries(localeProfiles)) {
+    if (!isCandidateLocale(localeKey)) {
+      continue;
+    }
 
+    const typedLocale = localeKey as CandidateLocale;
+
+    localizedChunks.push(
+      profile.profession,
+      profile.languages,
+      profile.education,
+      profile.experience,
+      profile.cover_letter_summary,
+      profile.cover_letter_full,
+    );
+
+    if (candidate.experienceDetail) {
       localizedChunks.push(
-        profile.profession,
-        profile.languages,
-        profile.education,
-        profile.experience,
-        profile.cover_letter_summary,
-        profile.cover_letter_full,
+        getExperienceTitle(candidate.experienceDetail, typedLocale),
+        getExperienceDuration(candidate.experienceDetail, typedLocale),
       );
-
-      if (candidate.experienceDetail) {
-        localizedChunks.push(
-          getExperienceTitle(candidate.experienceDetail, typedLocale),
-          getExperienceDuration(candidate.experienceDetail, typedLocale),
-        );
-      }
     }
   }
+
+  const fallbackProfile = getCandidateProfile(candidate, "en");
 
   const searchableText = normalizeText(
     [
       candidate.full_name,
-      candidate.profession,
-      candidate.languages,
-      candidate.education,
-      candidate.cover_letter_summary,
-      candidate.cover_letter_full,
-      candidate.experience,
+      fallbackProfile.profession,
+      fallbackProfile.languages,
+      fallbackProfile.education,
+      fallbackProfile.cover_letter_summary,
+      fallbackProfile.cover_letter_full,
+      fallbackProfile.experience,
       candidate.experienceDetail
         ? `${candidate.experienceDetail.title} ${candidate.experienceDetail.duration}`
         : "",

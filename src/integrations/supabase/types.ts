@@ -16,53 +16,65 @@ export type Database = {
     Tables: {
       candidates: {
         Row: {
-          birth_date: string
-          created_at: string
-          cover_letter_full: string
-          cover_letter_summary: string
-          education: string
-          email: string
-          full_name: string
-          id: string
-          languages: string
-          phone: string
-          photo_url: string | null
-          profession: string
-          experience: string
-          updated_at: string
-        }
-        Insert: {
-          birth_date: string
-          created_at?: string
-          cover_letter_full: string
-          cover_letter_summary: string
-          education: string
-          email: string
-          full_name: string
-          id?: string
-          languages: string
-          phone: string
-          photo_url?: string | null
-          profession: string
-          experience: string
-          updated_at?: string
-        }
-        Update: {
-          birth_date?: string
-          created_at?: string
-          cover_letter_full?: string
-          cover_letter_summary?: string
-          education?: string
-          email?: string
-          full_name?: string
-          id?: string
-          languages?: string
-          phone?: string
-          photo_url?: string | null
-          profession?: string
-          experience?: string
-          updated_at?: string
-        }
+      birth_date: string
+      created_at: string
+      cover_letter_full: string
+      cover_letter_summary: string
+      education: string
+      email: string
+      experience_detail: Json
+      full_name: string
+      id: string
+      languages: string
+      primary_care_setting: Database["public"]["Enums"]["care_setting"]
+      phone: string
+      photo_url: string | null
+      profession: string
+      experience: string
+      profile_en: Json
+      profile_no: Json
+      updated_at: string
+    }
+    Insert: {
+      birth_date: string
+      created_at?: string
+      cover_letter_full: string
+      cover_letter_summary: string
+      education: string
+      email: string
+      experience_detail: Json
+      full_name: string
+      id?: string
+      languages: string
+      primary_care_setting: Database["public"]["Enums"]["care_setting"]
+      phone: string
+      photo_url?: string | null
+      profession: string
+      experience: string
+      profile_en: Json
+      profile_no: Json
+      updated_at?: string
+    }
+    Update: {
+      birth_date?: string
+      created_at?: string
+      cover_letter_full?: string
+      cover_letter_summary?: string
+      education?: string
+      email?: string
+      experience_detail?: Json
+      full_name?: string
+      id?: string
+      languages?: string
+      primary_care_setting?: Database["public"]["Enums"]["care_setting"]
+      phone?: string
+      photo_url?: string | null
+      profession?: string
+      experience?: string
+      profile_en?: Json
+      profile_no?: Json
+      updated_at?: string
+    }
         Relationships: []
       }
     }
@@ -73,7 +85,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      care_setting: "domicilio_geriatrico" | "hospitalario" | "urgencias"
     }
     CompositeTypes: {
       [_ in never]: never
