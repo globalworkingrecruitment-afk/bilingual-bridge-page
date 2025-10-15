@@ -91,7 +91,14 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
-        <LanguageToggle language={language} onToggle={toggleLanguage} />
+        <div className="flex w-full items-center justify-between gap-4 md:w-auto md:justify-start">
+          <img
+            src="/globalworking-logo.svg"
+            alt="Global Working"
+            className="h-10 w-auto md:h-12"
+          />
+          <LanguageToggle language={language} onToggle={toggleLanguage} />
+        </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="text-right text-sm text-muted-foreground">
             <p className="font-medium text-foreground">{currentUser?.username}</p>
