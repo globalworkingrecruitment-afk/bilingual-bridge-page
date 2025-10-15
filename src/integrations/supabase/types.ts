@@ -14,68 +14,223 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          id: string
+          logged_at: string
+          role: Database["public"]["Enums"]["user_role"]
+          username: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          role: Database["public"]["Enums"]["user_role"]
+          username: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          username?: string
+        }
+        Relationships: []
+      }
+      app_users: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean
+          password: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       candidates: {
         Row: {
-      birth_date: string
-      created_at: string
-      cover_letter_full: string
-      cover_letter_summary: string
-      education: string
-      email: string
-      experience_detail: Json
-      full_name: string
-      id: string
-      languages: string
-      primary_care_setting: Database["public"]["Enums"]["care_setting"]
-      phone: string
-      photo_url: string | null
-      profession: string
-      experience: string
-      profile_en: Json
-      profile_no: Json
-      updated_at: string
-    }
-    Insert: {
-      birth_date: string
-      created_at?: string
-      cover_letter_full: string
-      cover_letter_summary: string
-      education: string
-      email: string
-      experience_detail: Json
-      full_name: string
-      id?: string
-      languages: string
-      primary_care_setting: Database["public"]["Enums"]["care_setting"]
-      phone: string
-      photo_url?: string | null
-      profession: string
-      experience: string
-      profile_en: Json
-      profile_no: Json
-      updated_at?: string
-    }
-    Update: {
-      birth_date?: string
-      created_at?: string
-      cover_letter_full?: string
-      cover_letter_summary?: string
-      education?: string
-      email?: string
-      experience_detail?: Json
-      full_name?: string
-      id?: string
-      languages?: string
-      primary_care_setting?: Database["public"]["Enums"]["care_setting"]
-      phone?: string
-      photo_url?: string | null
-      profession?: string
-      experience?: string
-      profile_en?: Json
-      profile_no?: Json
-      updated_at?: string
-    }
+          birth_date: string
+          created_at: string
+          cover_letter_full: string
+          cover_letter_summary: string
+          education: string
+          email: string
+          experience_detail: Json
+          full_name: string
+          id: string
+          languages: string
+          primary_care_setting: Database["public"]["Enums"]["care_setting"]
+          phone: string
+          photo_url: string | null
+          profession: string
+          experience: string
+          profile_en: Json
+          profile_no: Json
+          updated_at: string
+        }
+        Insert: {
+          birth_date: string
+          created_at?: string
+          cover_letter_full: string
+          cover_letter_summary: string
+          education: string
+          email: string
+          experience_detail: Json
+          full_name: string
+          id?: string
+          languages: string
+          primary_care_setting: Database["public"]["Enums"]["care_setting"]
+          phone: string
+          photo_url?: string | null
+          profession: string
+          experience: string
+          profile_en: Json
+          profile_no: Json
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string
+          created_at?: string
+          cover_letter_full?: string
+          cover_letter_summary?: string
+          education?: string
+          email?: string
+          experience_detail?: Json
+          full_name?: string
+          id?: string
+          languages?: string
+          primary_care_setting?: Database["public"]["Enums"]["care_setting"]
+          phone?: string
+          photo_url?: string | null
+          profession?: string
+          experience?: string
+          profile_en?: Json
+          profile_no?: Json
+          updated_at?: string
+        }
         Relationships: []
+      }
+      candidate_view_logs: {
+        Row: {
+          candidate_id: string
+          candidate_name: string
+          employer_username: string
+          id: string
+          viewed_at: string
+        }
+        Insert: {
+          candidate_id: string
+          candidate_name: string
+          employer_username: string
+          id?: string
+          viewed_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          candidate_name?: string
+          employer_username?: string
+          id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_view_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      employer_search_logs: {
+        Row: {
+          candidate_names: string[]
+          employer_username: string
+          id: string
+          query: string
+          searched_at: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_names?: string[]
+          employer_username: string
+          id?: string
+          query: string
+          searched_at?: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_names?: string[]
+          employer_username?: string
+          id?: string
+          query?: string
+          searched_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      schedule_requests: {
+        Row: {
+          availability: string
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          employer_email: string
+          employer_name: string | null
+          employer_username: string
+          id: string
+          requested_at: string
+        }
+        Insert: {
+          availability: string
+          candidate_email: string
+          candidate_id: string
+          candidate_name: string
+          employer_email: string
+          employer_name?: string | null
+          employer_username: string
+          id?: string
+          requested_at?: string
+        }
+        Update: {
+          availability?: string
+          candidate_email?: string
+          candidate_id?: string
+          candidate_name?: string
+          employer_email?: string
+          employer_name?: string | null
+          employer_username?: string
+          id?: string
+          requested_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_requests_candidate_id_fkey"
+            columns: ["candidate_id"]
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
@@ -86,6 +241,7 @@ export type Database = {
     }
     Enums: {
       care_setting: "domicilio_geriatrico" | "hospitalario" | "urgencias"
+      user_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never

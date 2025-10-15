@@ -1,4 +1,4 @@
-import { AccessLog, AppUser, CandidateViewLog, SessionUser, UserRole } from "@/types/auth";
+import { AccessLog, AppUser, CandidateViewLog, SearchLog, SessionUser, UserRole } from "@/types/auth";
 import { ScheduleRequestLog } from "@/types/schedule";
 
 const USERS_KEY = "bbp-app-users";
@@ -6,6 +6,7 @@ const LOGS_KEY = "bbp-access-logs";
 const SESSION_KEY = "bbp-auth-session";
 const CANDIDATE_VIEWS_KEY = "bbp-candidate-views";
 const SCHEDULE_REQUESTS_KEY = "bbp-schedule-requests";
+const EMPLOYER_SEARCHES_KEY = "bbp-employer-searches";
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 
@@ -72,6 +73,10 @@ export const initializeLocalDb = () => {
 
   if (!window.localStorage.getItem(SCHEDULE_REQUESTS_KEY)) {
     writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
+  }
+
+  if (!window.localStorage.getItem(EMPLOYER_SEARCHES_KEY)) {
+    writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
   }
 };
 
@@ -215,6 +220,50 @@ export const getCandidateViewsByUser = (): Record<string, CandidateViewLog[]> =>
   }, {});
 };
 
+export const getSearchLogs = (): SearchLog[] => {
+  const stored = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+
+  const sanitized = stored
+    .filter((log) => {
+      const hasEmployer = Boolean(log.employerUsername?.trim());
+      const hasQuery = Boolean(log.query?.trim());
+      const hasTimestamp = Boolean(log.searchedAt);
+
+      return hasEmployer && hasQuery && hasTimestamp;
+    })
+    .map((log) => ({
+      ...log,
+      employerUsername: log.employerUsername.trim(),
+      query: log.query.trim(),
+      candidateNames: Array.isArray(log.candidateNames)
+        ? log.candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
+        : [],
+      searchedAt: log.searchedAt,
+      updatedAt: log.updatedAt,
+    }));
+
+  if (sanitized.length !== stored.length) {
+    writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, sanitized);
+  }
+
+  return sanitized.sort((a, b) => new Date(b.searchedAt).getTime() - new Date(a.searchedAt).getTime());
+};
+
+export const getSearchLogsByUser = (): Record<string, SearchLog[]> => {
+  const logs = getSearchLogs();
+
+  return logs.reduce<Record<string, SearchLog[]>>((accumulator, log) => {
+    const key = log.employerUsername.trim().toLowerCase();
+
+    if (!accumulator[key]) {
+      accumulator[key] = [];
+    }
+
+    accumulator[key].push(log);
+    return accumulator;
+  }, {});
+};
+
 export const getScheduleRequests = (): ScheduleRequestLog[] => {
   const stored = readFromStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
 
@@ -343,6 +392,66 @@ export const recordCandidateView = (
   return newView;
 };
 
+export const recordSearchQuery = (
+  employerUsername: string,
+  query: string,
+  candidateNames?: string[],
+): SearchLog | null => {
+  if (!employerUsername?.trim() || !query?.trim()) {
+    return null;
+  }
+
+  const normalizedUsername = employerUsername.trim();
+  const normalizedQuery = query.trim();
+  const normalizedCandidates = (candidateNames ?? [])
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+
+  const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+
+  const timestamp = new Date().toISOString();
+
+  const newLog: SearchLog = {
+    id: generateId(),
+    employerUsername: normalizedUsername,
+    query: normalizedQuery,
+    candidateNames: normalizedCandidates,
+    searchedAt: timestamp,
+  };
+
+  searches.push(newLog);
+  writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, searches);
+
+  return newLog;
+};
+
+export const updateSearchLogCandidates = (
+  logId: string,
+  candidateNames: string[],
+): SearchLog | null => {
+  const normalizedCandidates = candidateNames
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+
+  const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+  const index = searches.findIndex((log) => log.id === logId);
+
+  if (index === -1) {
+    return null;
+  }
+
+  const updatedLog: SearchLog = {
+    ...searches[index],
+    candidateNames: normalizedCandidates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  searches[index] = updatedLog;
+  writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, searches);
+
+  return updatedLog;
+};
+
 export const validateUserCredentials = (identifier: string, password: string): AppUser | null => {
   const users = getUsers();
   const normalizedIdentifier = identifier.trim().toLowerCase();
@@ -465,6 +574,15 @@ export const removeUser = (userId: string) => {
 
     if (remainingViews.length !== views.length) {
       writeToStorage(CANDIDATE_VIEWS_KEY, remainingViews);
+    }
+
+    const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+    const remainingSearches = searches.filter(
+      (log) => log.employerUsername.trim().toLowerCase() !== removedUser.username.trim().toLowerCase(),
+    );
+
+    if (remainingSearches.length !== searches.length) {
+      writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, remainingSearches);
     }
   }
 };
