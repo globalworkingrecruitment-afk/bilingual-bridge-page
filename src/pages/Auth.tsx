@@ -60,19 +60,23 @@ const Auth = () => {
     <div className="relative min-h-screen overflow-hidden bg-slate-950 flex items-center justify-center px-6 py-12">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-10"
+        className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25"
         style={{ backgroundImage: "url('/globalworking-logo.svg')" }}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-background/95 via-background/80 to-primary/40"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-950/95 via-slate-900/70 to-primary/30"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.35),transparent_60%)]"
       />
 
       <div className="absolute top-6 right-6 z-20">
         <LanguageToggle language={language} onToggle={() => setLanguage((prev) => (prev === "en" ? "no" : "en"))} />
       </div>
 
-      <Card className="relative z-10 w-full max-w-md border-primary/30 bg-background/90 backdrop-blur-xl shadow-2xl">
+      <Card className="relative z-10 w-full max-w-md border-primary/30 bg-background/90 backdrop-blur-xl shadow-2xl shadow-primary/20">
         <CardHeader className="space-y-4 text-center">
           <img
             src="/globalworking-logo.svg"
