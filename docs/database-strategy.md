@@ -1,22 +1,18 @@
 # Diseño de base de datos para candidatos sanitarios
 
 ## 1. Reglas de negocio recopiladas
-- Cada candidato debe almacenar **nombre completo**, **año de nacimiento** y una **carta de presentación** redactada en 5-6 líneas.
-- Un candidato puede tener **cero, una o varias experiencias médicas**. Cada experiencia guarda un título descriptivo, la duración y el **ámbito asistencial** donde se desarrolló (domicilio geriátrico, hospitalario u urgencias).
-- Todos los campos del candidato son obligatorios salvo la lista de experiencias.
-- La aplicación consumirá la información mediante servicios automatizados (n8n) y debe mantenerse portable hacia PostgreSQL gestionado en Azure.
+- Cada candidato almacena **nombre completo**, **fecha de nacimiento**, datos de contacto y una **carta de presentación** en español.
+- El perfil incluye la **información profesional base** (profesión, resumen de experiencia, idiomas y formación).
+- Se destaca una única experiencia principal con su ámbito asistencial (domicilio geriátrico, hospitalario u urgencias) y traducciones opcionales del título y la duración.
+- Todo el perfil puede ofrecer traducciones opcionales para mostrar contenido bilingüe.
+- La información se alimentará mediante servicios automatizados (n8n) y debe poder desplegarse tanto en Supabase como en PostgreSQL administrado (Azure).
 
-Estas reglas ya están reflejadas en el tipo `Candidate` del front-end y en los datos de ejemplo que muestran cartas y experiencias en español.【F:src/types/candidate.ts†L1-L15】【F:src/data/mockCandidates.ts†L1-L160】
+Estas reglas se reflejan en el tipo `Candidate` utilizado por el front-end y en los datos de ejemplo disponibles en el repositorio.【F:src/types/candidate.ts†L1-L38】【F:src/data/mockCandidates.ts†L1-L375】
 
-## 2. Esquema relacional propuesto
-Se normalizó el modelo en dos tablas relacionadas por claves foráneas:
+## 2. Esquema relacional adoptado
+La aplicación utiliza una única tabla `public.candidates` que combina los campos obligatorios con columnas JSONB para almacenar metadatos bilingües. El archivo `20251026120000_prepare_complete_candidate_profile.sql` contiene la migración que deja la estructura lista para Supabase o PostgreSQL estándar.【F:supabase/migrations/20251026120000_prepare_complete_candidate_profile.sql†L1-L90】
 
-- `candidates`: entidad principal con la información personal y la carta de presentación.
-- `candidate_experiences`: almacena cada experiencia médica asociada a un candidato; el borrado en cascada mantiene la integridad cuando se elimina un candidato.
-
-### 2.1 Definición SQL
-El repositorio incluye el script inicial para Supabase/PostgreSQL con todas las restricciones necesarias.【F:supabase/migrations/20251010145823_dbc84dc9-cf4e-40ab-8a52-45f0c6f2d8d3.sql†L1-L80】
-
+### 2.1 Definición SQL principal
 ```sql
 CREATE TYPE public.care_setting AS ENUM (
   'domicilio_geriatrico',
@@ -24,52 +20,49 @@ CREATE TYPE public.care_setting AS ENUM (
   'urgencias'
 );
 
--- Core candidates table
 CREATE TABLE public.candidates (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT NOT NULL,
-  birth_year SMALLINT NOT NULL CHECK (birth_year BETWEEN 1900 AND date_part('year', now())),
-  cover_letter TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
--- Medical experiences associated to each candidate
-CREATE TABLE public.candidate_experiences (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  duration TEXT NOT NULL,
-  care_setting public.care_setting NOT NULL,
-  position SMALLINT NOT NULL DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  profession TEXT NOT NULL,
+  experience TEXT NOT NULL,
+  languages TEXT NOT NULL,
+  cover_letter_summary TEXT NOT NULL,
+  cover_letter_full TEXT NOT NULL,
+  education TEXT NOT NULL,
+  birth_date DATE NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  photo_url TEXT,
+  primary_care_setting public.care_setting NOT NULL,
+  experience_detail JSONB NOT NULL,
+  translations JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
-Notas destacadas:
-- `care_setting` obliga a clasificar cada experiencia en uno de los tres ámbitos requeridos por negocio (domicilio geriátrico, hospitalario o urgencias).
-- `position` permite ordenar las experiencias como llegan desde los flujos de n8n.
-- `gen_random_uuid()` requiere la extensión `pgcrypto`, habilitada por defecto en Supabase y disponible en Azure Database for PostgreSQL.
-- Las políticas RLS incluidas exponen lectura pública y restringen escrituras a roles autenticados (ideal para el servicio de n8n).
+Restricciones destacadas:
+- `primary_care_setting` utiliza el enum `care_setting` para garantizar los valores permitidos.
+- `experience_detail` almacena un objeto JSON con la experiencia principal (título, duración, `care_setting`, traducciones de título y duración). Un `CHECK` obliga a que `experience_detail->>'care_setting'` coincida con `primary_care_setting`.
+- `translations` guarda las versiones localizadas del perfil siguiendo la estructura `CandidateLocalizedProfile` del front-end.
+- Los índices `candidates_primary_care_setting_idx` y `candidates_created_at_idx` aceleran los filtros por ámbito asistencial y las consultas ordenadas por fecha.
+- La función `update_updated_at_column` y el trigger asociados mantienen el campo `updated_at` sincronizado tras cada modificación.【F:supabase/migrations/20251010145823_dbc84dc9-cf4e-40ab-8a52-45f0c6f2d8d3.sql†L68-L80】
 
-## 3. Cómo aplicarlo en Supabase y en PostgreSQL/Azure
-### Supabase
-1. Asegúrate de tener el CLI configurado (`supabase login`).
-2. Ejecuta `supabase db reset` o `supabase db push` para aplicar la migración incluida en `supabase/migrations`.
-3. Configura las credenciales que usará n8n con el rol `authenticated` para respetar las políticas RLS creadas.【F:supabase/migrations/20251010145823_dbc84dc9-cf4e-40ab-8a52-45f0c6f2d8d3.sql†L44-L63】
+## 3. Políticas de seguridad
+La tabla mantiene Row Level Security habilitado. Las políticas incluidas permiten la lectura pública y restringen cualquier escritura al rol `authenticated`, el adecuado para los flujos automatizados (n8n).【F:supabase/migrations/20251010145823_dbc84dc9-cf4e-40ab-8a52-45f0c6f2d8d3.sql†L38-L67】
 
-### PostgreSQL/Azure Database for PostgreSQL
-1. Conéctate al servidor con un superusuario (`psql` o Azure Cloud Shell).
+## 4. Aplicación en Supabase
+1. Configura el CLI (`supabase login`).
+2. Ejecuta `supabase db reset` o `supabase db push` para aplicar todas las migraciones del directorio `supabase/migrations`.
+3. Define las credenciales del servicio (rol `authenticated`) que usarán los procesos de n8n para respetar las políticas RLS vigentes.
+
+## 5. Aplicación en PostgreSQL/Azure Database for PostgreSQL
+1. Conéctate con un superusuario (`psql`, Azure Cloud Shell, etc.).
 2. Ejecuta `CREATE EXTENSION IF NOT EXISTS pgcrypto;` para habilitar `gen_random_uuid()`.
-3. Aplica el mismo script SQL mostrado arriba (o el archivo completo de la carpeta `supabase/migrations`).
-4. Crea un usuario de servicio con permisos `INSERT/UPDATE/DELETE` sobre ambas tablas para tus flujos de n8n y, si deseas seguridad equivalente a Supabase, replica las políticas mediante `GRANT` y `ROW LEVEL SECURITY`.
+3. Reproduce en orden los archivos SQL de `supabase/migrations` o ejecuta el script consolidado indicado en la sección 2.1.
+4. Crea un usuario de servicio con permisos `INSERT/UPDATE/DELETE` sobre `public.candidates` y replica, si lo necesitas, la política de seguridad mediante `GRANT` y `ROW LEVEL SECURITY`.
 
-## 4. Datos de ejemplo y tipado en la aplicación
-El front-end consume la información tipada en `Candidate`, que incluye el nombre completo, el año de nacimiento, la carta y el arreglo de experiencias con su ámbito asistencial.【F:src/types/candidate.ts†L1-L15】 Los datos de demostración muestran seis candidatos, uno de ellos sin experiencias para cubrir el caso borde.【F:src/data/mockCandidates.ts†L1-L160】 La carta se almacena en un solo campo de texto con saltos de línea y la interfaz respeta el formato (`white-space: pre-line`).【F:src/components/CandidateCard.tsx†L8-L63】
+## 6. Datos de ejemplo y tipado en la aplicación
+El front-end espera que cada fila de `public.candidates` pueda mapearse al tipo `Candidate`, incluyendo `experienceDetail` y `translations`. Los datos de demostración cubren múltiples ámbitos asistenciales para probar los filtros y búsquedas de la interfaz.【F:src/data/mockCandidates.ts†L1-L375】【F:src/lib/search.ts†L1-L240】 La carta de presentación usa saltos de línea que la UI respeta (`white-space: pre-line`).【F:src/components/CandidateCard.tsx†L1-L200】
 
-## 5. Ingesta automatizada con n8n
-1. Inserta o actualiza el candidato en `public.candidates` (usa `UPSERT` sobre `id` si generas los UUID en n8n).
-2. Borra e inserta las experiencias relacionadas en `public.candidate_experiences`, especificando siempre el `care_setting` y respetando el campo `position` para mantener el orden mostrado en la UI.
-3. La interfaz ya está preparada para mostrar candidatos sin experiencias y listará cada entrada con título y duración; el filtrado agrupa automáticamente por ámbito asistencial gracias a `care_setting`.【F:src/pages/Index.tsx†L1-L132】【F:src/components/ExperienceFilters.tsx†L1-L73】
-
-Con esta estructura la aplicación puede migrar sin fricciones hacia Azure Database for PostgreSQL y los flujos de n8n solo deben escribir en dos tablas simples y normalizadas.
+Con esta estructura, la migración queda alineada con el modelo de datos del front-end y preparada para ejecutarse en Supabase o en cualquier instancia de PostgreSQL compatible.
