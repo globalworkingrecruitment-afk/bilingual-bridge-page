@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { getN8nWebhookUrl } from "@/lib/env";
+import { recordSearchQuery, updateSearchLogCandidates } from "@/lib/localDb";
 
 const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
 
@@ -27,6 +28,7 @@ const Index = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const candidatesSectionRef = useRef<HTMLDivElement | null>(null);
+  const lastSearchLogRef = useRef<{ query: string; logId: string | null } | null>(null);
 
   const content = language === "en" ? englishContent : norwegianContent;
 
@@ -36,10 +38,34 @@ const Index = () => {
 
   const handleSearch = (query: string, candidateNames?: string[]) => {
     const normalizedQuery = query.trim();
+    const normalizedCandidateNames = candidateNames
+      ? candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
+      : [];
+
     setSearchQuery(normalizedQuery);
-    setWebhookCandidateNames(
-      candidateNames?.map((name) => name.trim()).filter((name) => name.length > 0) ?? [],
-    );
+    setWebhookCandidateNames(normalizedCandidateNames);
+
+    if (currentUser?.role === "user" && normalizedQuery) {
+      if (!candidateNames) {
+        const newLog = recordSearchQuery(currentUser.username, normalizedQuery, normalizedCandidateNames);
+        lastSearchLogRef.current = newLog
+          ? { query: normalizedQuery, logId: newLog.id }
+          : { query: normalizedQuery, logId: null };
+      } else {
+        const lastSearch = lastSearchLogRef.current;
+        const matchesLastQuery =
+          lastSearch && lastSearch.query.trim().toLowerCase() === normalizedQuery.toLowerCase();
+
+        if (matchesLastQuery && lastSearch.logId) {
+          updateSearchLogCandidates(lastSearch.logId, normalizedCandidateNames);
+        } else {
+          const newLog = recordSearchQuery(currentUser.username, normalizedQuery, normalizedCandidateNames);
+          lastSearchLogRef.current = newLog
+            ? { query: normalizedQuery, logId: newLog.id }
+            : { query: normalizedQuery, logId: null };
+        }
+      }
+    }
   };
 
   const scrollToCandidates = () => {

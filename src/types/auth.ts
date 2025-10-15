@@ -29,3 +29,12 @@ export interface CandidateViewLog {
   candidateName: string;
   viewedAt: string;
 }
+
+export interface SearchLog {
+  id: string;
+  employerUsername: string;
+  query: string;
+  candidateNames: string[];
+  searchedAt: string;
+  updatedAt?: string;
+}

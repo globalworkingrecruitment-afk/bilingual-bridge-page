@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { AppUser, AccessLog, CandidateViewLog } from "@/types/auth";
+import { AppUser, AccessLog, CandidateViewLog, SearchLog } from "@/types/auth";
 import { ScheduleRequestLog } from "@/types/schedule";
 import {
   addUser,
@@ -10,6 +10,7 @@ import {
   toggleUserStatus,
   getCandidateViewsByUser,
   getScheduleRequests,
+  getSearchLogsByUser,
 } from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [candidateViews, setCandidateViews] = useState<Record<string, CandidateViewLog[]>>({});
+  const [searchLogs, setSearchLogs] = useState<Record<string, SearchLog[]>>({});
   const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
@@ -40,6 +42,7 @@ const AdminDashboard = () => {
     setLogs(getAccessLogs());
     setCandidateViews(getCandidateViewsByUser());
     setMeetingRequests(getScheduleRequests());
+    setSearchLogs(getSearchLogsByUser());
   }, []);
 
   const activeUsers = useMemo(() => users.filter((user) => user.isActive).length, [users]);
@@ -71,6 +74,14 @@ const AdminDashboard = () => {
       return meetingRequestsByUser[key] ?? [];
     },
     [meetingRequestsByUser],
+  );
+
+  const getSearchesForUser = useCallback(
+    (username: string): SearchLog[] => {
+      const key = username.trim().toLowerCase();
+      return searchLogs[key] ?? [];
+    },
+    [searchLogs],
   );
 
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -115,6 +126,7 @@ const AdminDashboard = () => {
     setLogs(getAccessLogs());
     setCandidateViews(getCandidateViewsByUser());
     setMeetingRequests(getScheduleRequests());
+    setSearchLogs(getSearchLogsByUser());
     toast({ title: "Registros actualizados" });
   };
 
@@ -259,6 +271,7 @@ const AdminDashboard = () => {
                     <TableHead>Estado</TableHead>
                     <TableHead>Candidatos vistos</TableHead>
                     <TableHead>Solicitudes de reunión</TableHead>
+                    <TableHead>Búsquedas registradas</TableHead>
                     <TableHead>Creado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -267,6 +280,7 @@ const AdminDashboard = () => {
                   {users.map((user) => {
                     const views = getViewsForUser(user.username);
                     const requests = getRequestsForUser(user.username);
+                    const searches = getSearchesForUser(user.username);
 
                     return (
                       <Fragment key={user.id}>
@@ -307,6 +321,15 @@ const AdminDashboard = () => {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {searches.length === 0 ? (
+                            <span className="text-sm text-muted-foreground">Sin búsquedas</span>
+                          ) : (
+                            <Badge variant="outline" className="font-semibold">
+                              {searches.length}
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
@@ -316,8 +339,8 @@ const AdminDashboard = () => {
                         </TableRow>
                         {hoveredUserId === user.id && (
                           <TableRow className="bg-slate-50/70">
-                            <TableCell colSpan={8} className="p-6">
-                              <div className="grid gap-6 md:grid-cols-2">
+                            <TableCell colSpan={9} className="p-6">
+                              <div className="grid gap-6 md:grid-cols-3">
                                 <div>
                                   <div className="flex items-center justify-between">
                                     <p className="text-sm font-semibold text-foreground">Candidatos vistos</p>
@@ -367,6 +390,49 @@ const AdminDashboard = () => {
                                           <span className="whitespace-pre-wrap text-xs leading-snug text-muted-foreground">
                                             {request.availability}
                                           </span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold text-foreground">Búsquedas</p>
+                                    {searches.length > 0 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        Última búsqueda {new Date(searches[0].searchedAt).toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {searches.length === 0 ? (
+                                    <p className="mt-2 text-sm text-muted-foreground">Sin búsquedas registradas.</p>
+                                  ) : (
+                                    <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+                                      {searches.map((search) => (
+                                        <li
+                                          key={search.id}
+                                          className="flex flex-col gap-1 rounded border border-slate-200/80 p-3"
+                                        >
+                                          <span className="font-medium text-foreground">
+                                            &ldquo;{search.query}&rdquo;
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(search.searchedAt).toLocaleString()}
+                                            {search.updatedAt && (
+                                              <>
+                                                {" · "}Actualizado {new Date(search.updatedAt).toLocaleString()}
+                                              </>
+                                            )}
+                                          </span>
+                                          {search.candidateNames.length > 0 ? (
+                                            <span className="text-xs leading-snug text-muted-foreground">
+                                              Coincidencias sugeridas: {search.candidateNames.join(", ")}
+                                            </span>
+                                          ) : (
+                                            <span className="text-xs italic text-muted-foreground">
+                                              Sin coincidencias registradas
+                                            </span>
+                                          )}
                                         </li>
                                       ))}
                                     </ul>
