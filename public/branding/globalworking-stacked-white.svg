@@ -1,0 +1,15 @@
+<svg width="640" height="640" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Global Working stacked logo in white</title>
+  <desc id="desc">Monochrome white version of the stacked Global Working logo with tagline.</desc>
+  <rect width="640" height="640" fill="transparent" />
+  <path d="M120 170 Q320 40 520 170" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" />
+  <text x="120" y="310" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="140" font-weight="600" fill="#FFFFFF">
+    Global
+  </text>
+  <text x="120" y="430" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="140" font-weight="700" fill="#FFFFFF">
+    Working
+  </text>
+  <text x="150" y="520" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="42" fill="#FFFFFF" letter-spacing="5">
+    Work abroad  ·  Live abroad
+  </text>
+</svg>

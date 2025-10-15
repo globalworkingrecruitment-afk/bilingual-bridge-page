@@ -8,6 +8,8 @@ import { ExperienceFilters } from "@/components/ExperienceFilters";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
+import { BrandingShowcase } from "@/components/BrandingShowcase";
+import { BrandingHighlights } from "@/components/BrandingHighlights";
 import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
 import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
 import { useAuth } from "@/context/AuthContext";
@@ -97,11 +99,19 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full items-center justify-between gap-4 md:w-auto md:justify-start">
-          <img
-            src="/globalworking-logo.svg"
-            alt="Global Working"
-            className="h-10 w-auto md:h-12"
-          />
+          <div className="flex items-center gap-4">
+            <img
+              src="/branding/globalworking-horizontal-color.svg"
+              alt="Global Working"
+              className="h-10 w-auto md:h-12"
+            />
+            <span className="hidden h-8 w-px bg-border md:block" aria-hidden="true" />
+            <img
+              src="/branding/redgw-color.svg"
+              alt="RedGW"
+              className="h-8 w-auto md:h-10"
+            />
+          </div>
           <LanguageToggle language={language} onToggle={toggleLanguage} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -154,7 +164,9 @@ const Index = () => {
           />
         </div>
       </section>
-      
+
+      <BrandingShowcase language={language} />
+
       <footer className="py-8 text-center text-muted-foreground border-t mt-16">
         <p>© 2025 Global Working. {language === "en" ? "All rights reserved" : "Alle rettigheter reservert"}.</p>
       </footer>
