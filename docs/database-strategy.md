@@ -1,10 +1,10 @@
 # Diseño de base de datos para candidatos sanitarios
 
 ## 1. Reglas de negocio recopiladas
-- Cada candidato almacena **nombre completo**, **fecha de nacimiento**, datos de contacto y una **carta de presentación** en español.
-- El perfil incluye la **información profesional base** (profesión, resumen de experiencia, idiomas y formación).
+- Cada candidato almacena **nombre completo**, **fecha de nacimiento**, datos de contacto y cartas de presentación tanto en inglés como en noruego.
+- El perfil incluye la **información profesional base** (profesión, resumen de experiencia, idiomas y formación) duplicada para ambos idiomas.
 - Se destaca una única experiencia principal con su ámbito asistencial (domicilio geriátrico, hospitalario u urgencias) y traducciones opcionales del título y la duración.
-- Todo el perfil puede ofrecer traducciones opcionales para mostrar contenido bilingüe.
+- Todo el perfil debe disponer de versiones en inglés y en noruego listas para mostrarse sin depender de traducciones opcionales.
 - La información se alimentará mediante servicios automatizados (n8n) y debe poder desplegarse tanto en Supabase como en PostgreSQL administrado (Azure).
 
 Estas reglas se reflejan en el tipo `Candidate` utilizado por el front-end y en los datos de ejemplo disponibles en el repositorio.【F:src/types/candidate.ts†L1-L38】【F:src/data/mockCandidates.ts†L1-L375】
@@ -35,7 +35,8 @@ CREATE TABLE public.candidates (
   photo_url TEXT,
   primary_care_setting public.care_setting NOT NULL,
   experience_detail JSONB NOT NULL,
-  translations JSONB NOT NULL,
+  profile_en JSONB NOT NULL,
+  profile_no JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -44,7 +45,7 @@ CREATE TABLE public.candidates (
 Restricciones destacadas:
 - `primary_care_setting` utiliza el enum `care_setting` para garantizar los valores permitidos.
 - `experience_detail` almacena un objeto JSON con la experiencia principal (título, duración, `care_setting`, traducciones de título y duración). Un `CHECK` obliga a que `experience_detail->>'care_setting'` coincida con `primary_care_setting`.
-- `translations` guarda las versiones localizadas del perfil siguiendo la estructura `CandidateLocalizedProfile` del front-end.
+- `profile_en` y `profile_no` guardan los perfiles completos bilingües siguiendo la estructura `CandidateLocalizedProfile` del front-end.
 - Los índices `candidates_primary_care_setting_idx` y `candidates_created_at_idx` aceleran los filtros por ámbito asistencial y las consultas ordenadas por fecha.
 - La función `update_updated_at_column` y el trigger asociados mantienen el campo `updated_at` sincronizado tras cada modificación.【F:supabase/migrations/20251010145823_dbc84dc9-cf4e-40ab-8a52-45f0c6f2d8d3.sql†L68-L80】
 
@@ -63,6 +64,6 @@ La tabla mantiene Row Level Security habilitado. Las políticas incluidas permit
 4. Crea un usuario de servicio con permisos `INSERT/UPDATE/DELETE` sobre `public.candidates` y replica, si lo necesitas, la política de seguridad mediante `GRANT` y `ROW LEVEL SECURITY`.
 
 ## 6. Datos de ejemplo y tipado en la aplicación
-El front-end espera que cada fila de `public.candidates` pueda mapearse al tipo `Candidate`, incluyendo `experienceDetail` y `translations`. Los datos de demostración cubren múltiples ámbitos asistenciales para probar los filtros y búsquedas de la interfaz.【F:src/data/mockCandidates.ts†L1-L375】【F:src/lib/search.ts†L1-L240】 La carta de presentación usa saltos de línea que la UI respeta (`white-space: pre-line`).【F:src/components/CandidateCard.tsx†L1-L200】
+El front-end espera que cada fila de `public.candidates` pueda mapearse al tipo `Candidate`, incluyendo `experienceDetail`, `profile_en` y `profile_no`. Los datos de demostración cubren múltiples ámbitos asistenciales para probar los filtros y búsquedas de la interfaz.【F:src/data/mockCandidates.ts†L1-L375】【F:src/lib/search.ts†L1-L240】 La carta de presentación usa saltos de línea que la UI respeta (`white-space: pre-line`).【F:src/components/CandidateCard.tsx†L1-L200】
 
 Con esta estructura, la migración queda alineada con el modelo de datos del front-end y preparada para ejecutarse en Supabase o en cualquier instancia de PostgreSQL compatible.

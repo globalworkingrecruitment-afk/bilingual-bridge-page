@@ -18,7 +18,8 @@ $$;
 ALTER TABLE public.candidates
   ADD COLUMN IF NOT EXISTS primary_care_setting public.care_setting,
   ADD COLUMN IF NOT EXISTS experience_detail JSONB NOT NULL DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS translations JSONB NOT NULL DEFAULT '{}'::jsonb;
+  ADD COLUMN IF NOT EXISTS profile_en JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS profile_no JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Backfill newly added fields with coherent defaults so existing rows remain valid
 UPDATE public.candidates
@@ -37,14 +38,34 @@ WHERE experience_detail IS NULL
    OR NOT (experience_detail ? 'care_setting');
 
 UPDATE public.candidates
-SET translations = '{}'::jsonb
-WHERE translations IS NULL;
+SET profile_en = jsonb_build_object(
+    'profession', profession,
+    'experience', experience,
+    'languages', languages,
+    'cover_letter_summary', cover_letter_summary,
+    'cover_letter_full', cover_letter_full,
+    'education', education
+  );
+
+UPDATE public.candidates
+SET profile_no = jsonb_build_object(
+    'profession', COALESCE(translations->'no'->>'profession', profession),
+    'experience', COALESCE(translations->'no'->>'experience', experience),
+    'languages', COALESCE(translations->'no'->>'languages', languages),
+    'cover_letter_summary', COALESCE(translations->'no'->>'cover_letter_summary', cover_letter_summary),
+    'cover_letter_full', COALESCE(translations->'no'->>'cover_letter_full', cover_letter_full),
+    'education', COALESCE(translations->'no'->>'education', education)
+  );
 
 -- Enforce integrity rules once defaults are in place
 ALTER TABLE public.candidates
   ALTER COLUMN primary_care_setting SET NOT NULL,
   ALTER COLUMN experience_detail DROP DEFAULT,
-  ALTER COLUMN translations DROP DEFAULT;
+  ALTER COLUMN profile_en DROP DEFAULT,
+  ALTER COLUMN profile_no DROP DEFAULT;
+
+ALTER TABLE public.candidates
+  DROP COLUMN IF EXISTS translations;
 
 DO $$
 BEGIN
@@ -106,8 +127,35 @@ $$;
 DO $$
 BEGIN
   ALTER TABLE public.candidates
-    ADD CONSTRAINT candidates_translations_is_object
-      CHECK (jsonb_typeof(translations) = 'object');
+    ADD CONSTRAINT candidates_profile_en_is_object
+      CHECK (
+        jsonb_typeof(profile_en) = 'object'
+        AND profile_en ? 'profession'
+        AND profile_en ? 'experience'
+        AND profile_en ? 'languages'
+        AND profile_en ? 'cover_letter_summary'
+        AND profile_en ? 'cover_letter_full'
+        AND profile_en ? 'education'
+      );
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
+END;
+$$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.candidates
+    ADD CONSTRAINT candidates_profile_no_is_object
+      CHECK (
+        jsonb_typeof(profile_no) = 'object'
+        AND profile_no ? 'profession'
+        AND profile_no ? 'experience'
+        AND profile_no ? 'languages'
+        AND profile_no ? 'cover_letter_summary'
+        AND profile_no ? 'cover_letter_full'
+        AND profile_no ? 'education'
+      );
 EXCEPTION
   WHEN duplicate_object THEN
     NULL;

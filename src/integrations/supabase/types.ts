@@ -31,7 +31,8 @@ export type Database = {
       photo_url: string | null
       profession: string
       experience: string
-      translations: Json
+      profile_en: Json
+      profile_no: Json
       updated_at: string
     }
     Insert: {
@@ -50,7 +51,8 @@ export type Database = {
       photo_url?: string | null
       profession: string
       experience: string
-      translations: Json
+      profile_en: Json
+      profile_no: Json
       updated_at?: string
     }
     Update: {
@@ -69,7 +71,8 @@ export type Database = {
       photo_url?: string | null
       profession?: string
       experience?: string
-      translations?: Json
+      profile_en?: Json
+      profile_no?: Json
       updated_at?: string
     }
         Relationships: []
