@@ -8,8 +8,6 @@ import { ExperienceFilters } from "@/components/ExperienceFilters";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
-import { BrandingShowcase } from "@/components/BrandingShowcase";
-import { BrandingHighlights } from "@/components/BrandingHighlights";
 import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
 import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
 import { useAuth } from "@/context/AuthContext";
@@ -120,25 +118,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full items-center justify-between gap-4 md:w-auto md:justify-start">
-          <div className="flex items-center gap-4">
-            <img
-              src="/branding/globalworking-horizontal-color.svg"
-              alt="Global Working"
-              className="h-10 w-auto md:h-12"
-            />
-            <span className="hidden h-8 w-px bg-border md:block" aria-hidden="true" />
-            <img
-              src="/branding/redgw-color.svg"
-              alt="RedGW"
-              className="h-8 w-auto md:h-10"
-            />
-          </div>
-          <LanguageToggle language={language} onToggle={toggleLanguage} />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <div className="text-right text-sm text-muted-foreground">
+      <header className="flex flex-col gap-4 px-6 py-4 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center">
+        <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:gap-3">
+          <div className="text-left text-sm text-muted-foreground">
             <p className="font-medium text-foreground">{currentUser?.username}</p>
             {currentUser?.role === "admin" && (
               <Badge variant="outline" className="uppercase tracking-wide">
@@ -150,7 +132,23 @@ const Index = () => {
             Log out
           </Button>
         </div>
-      </div>
+        <div className="flex flex-col items-center gap-3 md:flex-row md:justify-center">
+          <img
+            src="/branding/globalworking-horizontal-color.svg"
+            alt="Global Working"
+            className="h-12 w-auto max-h-12 max-w-full object-contain"
+          />
+          <span className="hidden h-10 w-px bg-border md:block" aria-hidden="true" />
+          <img
+            src="/branding/redgw-color.svg"
+            alt="RedGW"
+            className="h-10 w-auto max-h-10 max-w-full object-contain"
+          />
+        </div>
+        <div className="flex justify-start md:justify-end">
+          <LanguageToggle language={language} onToggle={toggleLanguage} />
+        </div>
+      </header>
 
       <Hero content={content.hero} onPrimaryAction={scrollToCandidates} />
       <Stats content={content.stats} />
@@ -189,8 +187,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      <BrandingShowcase language={language} />
 
       <footer className="py-8 text-center text-muted-foreground border-t mt-16">
         <p>© 2025 Global Working. {language === "en" ? "All rights reserved" : "Alle rettigheter reservert"}.</p>
