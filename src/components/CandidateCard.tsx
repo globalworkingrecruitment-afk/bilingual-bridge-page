@@ -33,6 +33,7 @@ import {
   updateUserEmail,
 } from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
+import { getScheduleWebhookUrl } from "@/lib/env";
 
 interface CandidateCardProps {
   candidate: Candidate;
@@ -42,8 +43,7 @@ interface CandidateCardProps {
 
 type ScheduleStep = "email" | "availability" | "confirm";
 
-const SCHEDULE_WEBHOOK_URL =
-  "https://primary-production-cdb3.up.railway.app/webhook-test/6669a30e-b24c-46ac-a0d3-20859ffe133c";
+const SCHEDULE_WEBHOOK_URL = getScheduleWebhookUrl();
 
 export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps) => {
   const { currentUser } = useAuth();
@@ -107,6 +107,15 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       toast({
         title: "Acción no disponible",
         description: "Debes iniciar sesión como empleador para agendar reuniones.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!SCHEDULE_WEBHOOK_URL) {
+      toast({
+        title: "Servicio no configurado",
+        description: "No se encontró la URL segura del webhook para agendar reuniones.",
         variant: "destructive",
       });
       return;
@@ -181,6 +190,15 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       return;
     }
 
+    if (!SCHEDULE_WEBHOOK_URL) {
+      toast({
+        title: "Servicio no disponible",
+        description: "El webhook seguro para agendar reuniones no está configurado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const normalizedEmployerEmail = scheduleEmployerEmail.trim();
     const normalizedAvailability = scheduleAvailability.trim();
 
@@ -216,6 +234,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "omit",
         body: JSON.stringify(payload),
       });
 
@@ -267,11 +286,13 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               size="icon"
               className="bg-emerald-500 text-white hover:bg-emerald-600"
               onClick={handleOpenScheduleDialog}
-              disabled={!canSchedule}
+              disabled={!canSchedule || !SCHEDULE_WEBHOOK_URL}
               title={
-                canSchedule
-                  ? content.candidateCard.scheduleMeeting
-                  : "Inicia sesión como empleador para agendar reuniones"
+                !canSchedule
+                  ? "Inicia sesión como empleador para agendar reuniones"
+                  : SCHEDULE_WEBHOOK_URL
+                    ? content.candidateCard.scheduleMeeting
+                    : "Configura la URL segura del servicio de agenda para habilitar esta acción"
               }
               aria-label={content.candidateCard.scheduleMeeting}
             >

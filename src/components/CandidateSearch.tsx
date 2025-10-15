@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeExternalUrl } from "@/lib/security";
 
 interface CandidateSearchProps {
   onSearch: (query: string) => void;
@@ -16,18 +17,37 @@ export const CandidateSearch = ({ onSearch, n8nWebhookUrl, placeholder, searchLa
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const sanitizedWebhookUrl = useMemo(
+    () =>
+      sanitizeExternalUrl(n8nWebhookUrl, {
+        variableName: "n8n webhook URL",
+        allowHttpLocalhost: true,
+      }),
+    [n8nWebhookUrl],
+  );
+
   const handleSearch = async () => {
     onSearch(searchQuery);
     
     if (n8nWebhookUrl && searchQuery.trim()) {
+      if (!sanitizedWebhookUrl) {
+        toast({
+          title: "Webhook no válido",
+          description: "Actualiza la configuración con una URL HTTPS segura antes de enviar búsquedas.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsLoading(true);
       try {
-        await fetch(n8nWebhookUrl, {
+        await fetch(sanitizedWebhookUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           mode: "no-cors",
+          credentials: "omit",
           body: JSON.stringify({
             query: searchQuery,
             timestamp: new Date().toISOString(),

@@ -14,12 +14,13 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { getN8nWebhookUrl } from "@/lib/env";
 
 const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
-  const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
+  const [n8nWebhook] = useState<string>(() => getN8nWebhookUrl() ?? "");
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
