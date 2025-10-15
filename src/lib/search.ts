@@ -1,4 +1,5 @@
-import { Candidate, CareSetting } from "@/types/candidate";
+import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
+import { getExperienceDuration, getExperienceTitle, isCandidateLocale } from "@/lib/candidates";
 
 interface SearchCriteria {
   rawQuery: string;
@@ -189,6 +190,34 @@ export const candidateMatchesCriteria = (
     return true;
   }
 
+  const localizedChunks: string[] = [];
+
+  if (candidate.translations) {
+    for (const [localeKey, profile] of Object.entries(candidate.translations)) {
+      if (!profile || !isCandidateLocale(localeKey)) {
+        continue;
+      }
+
+      const typedLocale = localeKey as CandidateLocale;
+
+      localizedChunks.push(
+        profile.profession,
+        profile.languages,
+        profile.education,
+        profile.experience,
+        profile.cover_letter_summary,
+        profile.cover_letter_full,
+      );
+
+      if (candidate.experienceDetail) {
+        localizedChunks.push(
+          getExperienceTitle(candidate.experienceDetail, typedLocale),
+          getExperienceDuration(candidate.experienceDetail, typedLocale),
+        );
+      }
+    }
+  }
+
   const searchableText = normalizeText(
     [
       candidate.full_name,
@@ -201,6 +230,7 @@ export const candidateMatchesCriteria = (
       candidate.experienceDetail
         ? `${candidate.experienceDetail.title} ${candidate.experienceDetail.duration}`
         : "",
+      ...localizedChunks,
     ]
       .flat()
       .join(" "),

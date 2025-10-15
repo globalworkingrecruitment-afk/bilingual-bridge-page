@@ -8,7 +8,7 @@ import { ExperienceFilters } from "@/components/ExperienceFilters";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
 import { mockCandidates } from "@/data/mockCandidates";
-import { Candidate, CareSetting } from "@/types/candidate";
+import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
 import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const [language, setLanguage] = useState<"en" | "no">("en");
+  const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
   const [n8nWebhook] = useState<string>(""); // Aquí el usuario puede añadir su webhook de n8n
@@ -26,7 +26,7 @@ const Index = () => {
   const content = language === "en" ? englishContent : norwegianContent;
 
   const toggleLanguage = () => {
-    setLanguage(prev => prev === "en" ? "no" : "en");
+    setLanguage(prev => (prev === "en" ? "no" : "en"));
   };
 
   const handleSearch = (query: string) => {
@@ -95,9 +95,11 @@ const Index = () => {
         <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="text-right text-sm text-muted-foreground">
             <p className="font-medium text-foreground">{currentUser?.username}</p>
-            <Badge variant="outline" className="uppercase tracking-wide">
-              {currentUser?.role === "admin" ? "Administrator" : "User"}
-            </Badge>
+            {currentUser?.role === "admin" && (
+              <Badge variant="outline" className="uppercase tracking-wide">
+                Administrator
+              </Badge>
+            )}
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Log out
@@ -133,7 +135,11 @@ const Index = () => {
             onSelect={handleSelectExperience}
             labels={content.candidates.filters}
           />
-          <CandidatesSection candidates={filteredCandidates} content={content} />
+          <CandidatesSection
+            candidates={filteredCandidates}
+            content={content}
+            locale={language}
+          />
         </div>
       </section>
       
