@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Candidate } from "@/types/candidate";
+import { CandidateLocale, Candidate } from "@/types/candidate";
 import type { AppContent } from "@/types/content";
 import { AppUser } from "@/types/auth";
 import {
@@ -25,6 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { getCandidateProfile, getExperienceDuration, getExperienceTitle } from "@/lib/candidates";
 import {
   getUsers,
   recordCandidateView,
@@ -36,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 interface CandidateCardProps {
   candidate: Candidate;
   content: AppContent;
+  locale: CandidateLocale;
 }
 
 type ScheduleStep = "email" | "availability" | "confirm";
@@ -43,7 +45,7 @@ type ScheduleStep = "email" | "availability" | "confirm";
 const SCHEDULE_WEBHOOK_URL =
   "https://primary-production-cdb3.up.railway.app/webhook-test/6669a30e-b24c-46ac-a0d3-20859ffe133c";
 
-export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
+export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps) => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
@@ -55,6 +57,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
   const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
 
   const primaryExperience = candidate.experienceDetail;
+  const profile = getCandidateProfile(candidate, locale);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "user") {
@@ -255,7 +258,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 {content.candidateCard.profession}
               </p>
-              <p className="text-sm text-muted-foreground">{candidate.profession}</p>
+              <p className="text-sm text-muted-foreground">{profile.profession}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -298,7 +301,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                         {content.candidateCard.education}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {candidate.education}
+                        {profile.education}
                       </p>
                     </div>
                   </div>
@@ -309,7 +312,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                         {content.candidateCard.experienceOverview}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {candidate.experience}
+                        {profile.experience}
                       </p>
                     </div>
                   </div>
@@ -320,7 +323,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
                         {content.candidateCard.coverLetterFull}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {candidate.cover_letter_full}
+                        {profile.cover_letter_full}
                       </p>
                     </div>
                   </div>
@@ -338,7 +341,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
               {content.candidateCard.languages}
             </p>
-            <p className="text-sm text-muted-foreground">{candidate.languages}</p>
+            <p className="text-sm text-muted-foreground">{profile.languages}</p>
           </div>
         </div>
 
@@ -347,7 +350,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
             {content.candidateCard.summary}
           </h4>
           <p className="text-sm text-muted-foreground whitespace-pre-line">
-            {candidate.cover_letter_summary}
+            {profile.cover_letter_summary}
           </p>
         </div>
 
@@ -359,8 +362,8 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
             </div>
             {primaryExperience ? (
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{primaryExperience.title}</span>{" "}
-                <span className="italic">({primaryExperience.duration})</span>
+                <span className="font-medium text-foreground">{getExperienceTitle(primaryExperience, locale)}</span>{" "}
+                <span className="italic">({getExperienceDuration(primaryExperience, locale)})</span>
               </p>
             ) : (
               <p className="text-sm text-muted-foreground italic">
@@ -420,7 +423,7 @@ export const CandidateCard = ({ candidate, content }: CandidateCardProps) => {
               <div className="space-y-4">
                 <div className="space-y-1 text-sm">
                   <p className="font-semibold text-foreground">{candidate.full_name}</p>
-                  <p className="text-muted-foreground">{candidate.profession}</p>
+                  <p className="text-muted-foreground">{profile.profession}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor={`schedule-availability-${candidate.id}`}>Disponibilidad propuesta</Label>

@@ -1,9 +1,22 @@
 export type CareSetting = "domicilio_geriatrico" | "hospitalario" | "urgencias";
 
+export type CandidateLocale = "en" | "no";
+
+export interface CandidateLocalizedProfile {
+  profession: string;
+  experience: string;
+  languages: string;
+  cover_letter_summary: string;
+  cover_letter_full: string;
+  education: string;
+}
+
 export interface CandidateExperience {
   title: string;
   duration: string;
   care_setting: CareSetting;
+  titles?: Partial<Record<CandidateLocale, string>>;
+  durations?: Partial<Record<CandidateLocale, string>>;
 }
 
 export interface Candidate {
@@ -22,4 +35,5 @@ export interface Candidate {
   created_at?: string;
   updated_at?: string;
   experienceDetail: CandidateExperience;
+  translations?: Partial<Record<CandidateLocale, CandidateLocalizedProfile>>;
 }
