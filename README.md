@@ -1,16 +1,16 @@
-# Welcome to your Lovable project
+# Global Working – Bilingual Bridge Page
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/a200a069-d067-446d-9d69-cedc4064e8a1
+A multilingual landing page showcasing Global Working's remote career services.
 
 ## How can I edit this code?
 
-There are several ways of editing your application.
+You can work with the project using any Git-aware workflow.
 
 ## ¿Cómo actualizo los cambios en Git?
 
-Si estás trabajando de forma local y quieres subir tus ajustes al repositorio, abre una terminal (la integrada en tu IDE, la de Lovable con **Terminal → New Terminal** o una ventana de comandos de tu sistema) y navega a la carpeta del proyecto clonado. Desde ahí, ejecuta estos pasos básicos:
+Si estás trabajando de forma local y quieres subir tus ajustes al repositorio, abre una terminal (puede ser la integrada en tu IDE o una ventana de comandos de tu sistema) y navega a la carpeta del proyecto clonado. Desde ahí, ejecuta estos pasos básicos:
 
 ```sh
 # 1. Revisa qué archivos han cambiado.
@@ -47,51 +47,31 @@ git log --oneline
 
 Con esa información puedes redactar un mensaje de commit que resuma tus modificaciones, por ejemplo: `git commit -m "Corrige redirección del magic link y actualiza la guía de Git"`.
 
-**Use Lovable**
+## Opciones para editar el proyecto
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/a200a069-d067-446d-9d69-cedc4064e8a1) and start prompting.
+### Usa tu IDE preferido
 
-Changes made via Lovable will be committed automatically to this repo.
+Clona este repositorio y trabaja de forma local.
 
-**Use your preferred IDE**
+1. Asegúrate de tener Node.js y npm instalados (puedes usar [nvm](https://github.com/nvm-sh/nvm#installing-and-updating)).
+2. Instala las dependencias con `npm install`.
+3. Lanza el entorno de desarrollo con `npm run dev` y abre el enlace que se muestra en la terminal.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Edita un archivo directamente en GitHub
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Navega hasta el archivo que quieres modificar.
+2. Haz clic en el botón "Edit" (icono de lápiz) en la esquina superior derecha.
+3. Realiza tus cambios y crea un commit describiendo la modificación.
 
-Follow these steps:
+### Usa GitHub Codespaces
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+1. Navega a la página principal del repositorio.
+2. Haz clic en el botón verde "Code".
+3. Selecciona la pestaña "Codespaces".
+4. Pulsa "New codespace" para abrir un entorno listo para editar.
+5. Realiza tus cambios y sube tus commits cuando termines.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+## ¿Qué tecnologías utiliza este proyecto?
 
 - Vite
 - TypeScript
@@ -99,14 +79,10 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## ¿Cómo puedo desplegar este proyecto?
 
-Simply open [Lovable](https://lovable.dev/projects/a200a069-d067-446d-9d69-cedc4064e8a1) and click on Share -> Publish.
+El repositorio está listo para cualquier proveedor que soporte aplicaciones de Vite/React. Genera una build de producción con `npm run build` y despliega el contenido de la carpeta `dist` en tu plataforma preferida.
 
-## Can I connect a custom domain to my Lovable project?
+## ¿Puedo conectar un dominio personalizado?
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Sí. Configura tu dominio en el proveedor de alojamiento que elijas y apunta el DNS al despliegue generado por tu servicio de hosting.
