@@ -81,19 +81,26 @@ Clona este repositorio y trabaja de forma local.
 
 ## ¿Cómo conecto la base de datos de Supabase?
 
+Para un recorrido detallado puedes consultar [docs/configuracion-supabase.md](./docs/configuracion-supabase.md). El resumen es el siguiente:
+
 1. Ejecuta las migraciones del repositorio en tu proyecto de Supabase para crear la tabla `public.candidate_data`, los triggers y las políticas RLS descritas en `docs/migracion-completa.sql`.
-2. En la sección **Authentication > Users** de Supabase crea un usuario de servicio (por ejemplo `bridge-viewer@example.com`) con una contraseña segura. Este usuario será el que utilice la aplicación para autenticarse como rol `authenticated`.
+2. En la sección **Authentication > Users** de Supabase crea un usuario de servicio (por ejemplo `globalworkingrecruitment@gmail.com`) con una contraseña segura. Este usuario será el que utilice la aplicación para autenticarse como rol `authenticated`.
 3. En Supabase asigna permisos de lectura/escritura al usuario de servicio (basta con mantener el rol por defecto `authenticated`, las políticas RLS ya permiten todas las operaciones autenticadas).
 4. Crea un archivo `.env.local` en la raíz del proyecto con estas variables:
 
 ```env
 VITE_SUPABASE_URL="https://<tu-proyecto>.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="<anon-key>"
-VITE_SUPABASE_SERVICE_EMAIL="bridge-viewer@example.com"
+VITE_SUPABASE_SERVICE_EMAIL="globalworkingrecruitment@gmail.com"
 VITE_SUPABASE_SERVICE_PASSWORD="contraseña-segura"
 ```
 
 5. Arranca la aplicación con `npm run dev`. Al iniciar sesión en la app web se establecerá automáticamente la sesión de Supabase usando el usuario de servicio y se cargarán los registros de `candidate_data`.
+6. Si necesitas acceder al panel `/admin`, añade también `VITE_ADMIN_USERNAME` y `VITE_ADMIN_PASSWORD` en `.env.local`. No hace falta crear un rol especial en Supabase: estas credenciales solo viven en la app y se utilizan para el inicio de sesión del panel.
+
+## ¿Cuál es la raíz del proyecto?
+
+La carpeta raíz es el directorio que contiene `package.json`, `vite.config.ts` y el resto de archivos principales del repositorio. Si clonaste el código con `git clone`, la ruta será similar a `.../bilingual-bridge-page/`. Desde ahí podrás ejecutar los comandos (`npm install`, `npm run dev`, etc.) y crear el archivo `.env.local`.
 
 ## ¿Cómo puedo desplegar este proyecto?
 

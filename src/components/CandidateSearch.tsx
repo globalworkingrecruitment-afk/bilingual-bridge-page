@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { sanitizeExternalUrl } from "@/lib/security";
 
 interface CandidateSearchProps {
-  onSearch: (query: string, candidateNames?: string[]) => void;
+  onSearch: (query: string, candidateNames?: string[]) => void | Promise<void>;
   n8nWebhookUrl?: string;
   placeholder?: string;
   searchLabel?: string;
@@ -55,7 +55,7 @@ export const CandidateSearch = ({ onSearch, n8nWebhookUrl, placeholder, searchLa
 
   const handleSearch = async () => {
     const trimmedQuery = searchQuery.trim();
-    onSearch(trimmedQuery);
+    await onSearch(trimmedQuery);
 
     if (n8nWebhookUrl && trimmedQuery) {
       if (!sanitizedWebhookUrl) {
@@ -114,7 +114,7 @@ export const CandidateSearch = ({ onSearch, n8nWebhookUrl, placeholder, searchLa
         }
 
         const normalizedNames = candidateNames.map((name) => name.trim()).filter((name) => name.length > 0);
-        onSearch(trimmedQuery, normalizedNames);
+        await onSearch(trimmedQuery, normalizedNames);
 
         if (normalizedNames.length > 0) {
           toast({

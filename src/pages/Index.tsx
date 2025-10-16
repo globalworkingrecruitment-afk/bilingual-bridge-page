@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { getN8nWebhookUrl } from "@/lib/env";
 import { recordSearchQuery, updateSearchLogCandidates } from "@/lib/localDb";
 import { useCandidateData } from "@/hooks/useCandidateData";
+import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
 
@@ -26,6 +27,7 @@ const Index = () => {
   const [webhookCandidateNames, setWebhookCandidateNames] = useState<string[]>([]);
   const [n8nWebhook] = useState<string>(() => getN8nWebhookUrl() ?? DEFAULT_WEBHOOK_URL);
   const { currentUser, logout } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const {
     candidates,
@@ -43,37 +45,57 @@ const Index = () => {
     setLanguage(prev => (prev === "en" ? "no" : "en"));
   };
 
-  const handleSearch = (query: string, candidateNames?: string[]) => {
-    const normalizedQuery = query.trim();
-    const normalizedCandidateNames = candidateNames
-      ? candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
-      : [];
+  const handleSearch = useCallback(
+    async (query: string, candidateNames?: string[]) => {
+      const normalizedQuery = query.trim();
+      const normalizedCandidateNames = candidateNames
+        ? candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
+        : [];
 
-    setSearchQuery(normalizedQuery);
-    setWebhookCandidateNames(normalizedCandidateNames);
+      setSearchQuery(normalizedQuery);
+      setWebhookCandidateNames(normalizedCandidateNames);
 
-    if (currentUser?.role === "user" && normalizedQuery) {
-      if (!candidateNames) {
-        const newLog = recordSearchQuery(currentUser.username, normalizedQuery, normalizedCandidateNames);
-        lastSearchLogRef.current = newLog
-          ? { query: normalizedQuery, logId: newLog.id }
-          : { query: normalizedQuery, logId: null };
-      } else {
-        const lastSearch = lastSearchLogRef.current;
-        const matchesLastQuery =
-          lastSearch && lastSearch.query.trim().toLowerCase() === normalizedQuery.toLowerCase();
+      if (currentUser?.role === "user" && normalizedQuery) {
+        try {
+          if (!candidateNames) {
+            const newLog = await recordSearchQuery(
+              currentUser.username,
+              normalizedQuery,
+              normalizedCandidateNames,
+            );
+            lastSearchLogRef.current = newLog
+              ? { query: normalizedQuery, logId: newLog.id }
+              : { query: normalizedQuery, logId: null };
+          } else {
+            const lastSearch = lastSearchLogRef.current;
+            const matchesLastQuery =
+              lastSearch && lastSearch.query.trim().toLowerCase() === normalizedQuery.toLowerCase();
 
-        if (matchesLastQuery && lastSearch.logId) {
-          updateSearchLogCandidates(lastSearch.logId, normalizedCandidateNames);
-        } else {
-          const newLog = recordSearchQuery(currentUser.username, normalizedQuery, normalizedCandidateNames);
-          lastSearchLogRef.current = newLog
-            ? { query: normalizedQuery, logId: newLog.id }
-            : { query: normalizedQuery, logId: null };
+            if (matchesLastQuery && lastSearch.logId) {
+              await updateSearchLogCandidates(lastSearch.logId, normalizedCandidateNames);
+            } else {
+              const newLog = await recordSearchQuery(
+                currentUser.username,
+                normalizedQuery,
+                normalizedCandidateNames,
+              );
+              lastSearchLogRef.current = newLog
+                ? { query: normalizedQuery, logId: newLog.id }
+                : { query: normalizedQuery, logId: null };
+            }
+          }
+        } catch (error) {
+          lastSearchLogRef.current = null;
+          const message =
+            error instanceof Error
+              ? error.message
+              : "No se pudo registrar la búsqueda del empleador.";
+          toast({ title: "Error al registrar búsqueda", description: message, variant: "destructive" });
         }
       }
-    }
-  };
+    },
+    [currentUser, toast],
+  );
 
   const scrollToCandidates = () => {
     candidatesSectionRef.current?.scrollIntoView({ behavior: "smooth" });

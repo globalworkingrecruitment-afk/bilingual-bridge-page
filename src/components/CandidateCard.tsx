@@ -27,7 +27,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { buildExperienceSummary, getCandidateProfile } from "@/lib/candidates";
 import {
-  getUsers,
+  getUserByIdentifier,
   recordCandidateView,
   recordScheduleRequest,
   updateUserEmail,
@@ -67,23 +67,37 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
   const experienceText = experienceSummary || content.candidateCard.noExperience;
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== "user") {
-      setEmployerProfile(null);
-      setScheduleEmployerEmail("");
-      return;
-    }
+    let active = true;
 
-    const matchedUser = getUsers().find(
-      (user) => user.username.trim().toLowerCase() === currentUser.username.trim().toLowerCase(),
-    );
+    const loadEmployerProfile = async () => {
+      if (!currentUser || currentUser.role !== "user") {
+        if (!active) return;
+        setEmployerProfile(null);
+        setScheduleEmployerEmail("");
+        return;
+      }
 
-    if (matchedUser) {
-      setEmployerProfile(matchedUser);
-      setScheduleEmployerEmail(matchedUser.email ?? "");
-    } else {
-      setEmployerProfile(null);
-      setScheduleEmployerEmail("");
-    }
+      try {
+        const matchedUser = await getUserByIdentifier(currentUser.username);
+        if (!active) return;
+
+        if (matchedUser) {
+          setEmployerProfile(matchedUser);
+          setScheduleEmployerEmail(matchedUser.email ?? "");
+        } else {
+          setEmployerProfile(null);
+          setScheduleEmployerEmail("");
+        }
+      } catch (error) {
+        console.error("No se pudo cargar el perfil del empleador", error);
+      }
+    };
+
+    void loadEmployerProfile();
+
+    return () => {
+      active = false;
+    };
   }, [currentUser]);
 
   const canSchedule = currentUser?.role === "user";
@@ -93,7 +107,13 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       if (!isOpen) return;
       if (!currentUser || currentUser.role !== "user") return;
 
-      recordCandidateView(currentUser.username, candidate.id, candidate.nombre);
+      void (async () => {
+        try {
+          await recordCandidateView(currentUser.username, candidate.id, candidate.nombre);
+        } catch (error) {
+          console.warn("No se pudo registrar la vista del candidato", error);
+        }
+      })();
     },
     [candidate.nombre, candidate.id, currentUser],
   );
@@ -153,7 +173,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
     try {
       if (employerProfile) {
-        const updatedUser = updateUserEmail(employerProfile.id, normalizedEmail);
+        const updatedUser = await updateUserEmail(employerProfile.id, normalizedEmail);
         if (updatedUser) {
           setEmployerProfile(updatedUser);
           setScheduleEmployerEmail(updatedUser.email ?? "");
@@ -250,7 +270,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
         throw new Error(errorText || "El servicio de agenda respondió con un error.");
       }
 
-      recordScheduleRequest({
+      await recordScheduleRequest({
         employerUsername: currentUser.username,
         employerEmail: normalizedEmployerEmail,
         employerName: employerProfile?.fullName,
