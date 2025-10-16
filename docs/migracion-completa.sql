@@ -14,7 +14,7 @@ EXCEPTION
 END;
 $$;
 
--- Helper to identify administrator accounts inside RLS policies
+-- Helper to identify administrator accounts inside RLS policies (optional)
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE plpgsql

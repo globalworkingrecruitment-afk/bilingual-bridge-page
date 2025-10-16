@@ -1,22 +1,13 @@
-import { AccessLog, AppUser, CandidateViewLog, SearchLog, SessionUser, UserRole } from "@/types/auth";
-import { ScheduleRequestLog } from "@/types/schedule";
+import type { PostgrestError } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { ensureSupabaseSession } from "@/lib/supabase-auth";
+import type { AccessLog, AppUser, CandidateViewLog, SearchLog, SessionUser, UserRole } from "@/types/auth";
+import type { ScheduleRequestLog } from "@/types/schedule";
 
-const USERS_KEY = "bbp-app-users";
-const LOGS_KEY = "bbp-access-logs";
 const SESSION_KEY = "bbp-auth-session";
-const CANDIDATE_VIEWS_KEY = "bbp-candidate-views";
-const SCHEDULE_REQUESTS_KEY = "bbp-schedule-requests";
-const EMPLOYER_SEARCHES_KEY = "bbp-employer-searches";
 
 const isBrowser = typeof window !== "undefined" && typeof window.localStorage !== "undefined";
-
-const generateId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
 
 const readFromStorage = <T>(key: string, fallback: T): T => {
   if (!isBrowser) return fallback;
@@ -38,46 +29,72 @@ const writeToStorage = <T>(key: string, value: T) => {
   window.localStorage.setItem(key, JSON.stringify(value));
 };
 
-const createSeedUser = (
-  username: string,
-  password: string,
-  fullName?: string,
-  email?: string,
-): AppUser => ({
-  id: generateId(),
-  username: username.trim(),
-  password: password.trim(),
-  fullName,
-  email: email?.trim() || undefined,
-  isActive: true,
-  createdAt: new Date().toISOString(),
+type AppUserRow = Database["public"]["Tables"]["app_users"]["Row"];
+type AccessLogRow = Database["public"]["Tables"]["access_logs"]["Row"];
+type CandidateViewRow = Database["public"]["Tables"]["candidate_view_logs"]["Row"];
+type ScheduleRequestRow = Database["public"]["Tables"]["schedule_requests"]["Row"];
+type SearchLogRow = Database["public"]["Tables"]["employer_search_logs"]["Row"];
+
+type MaybeSingleError = PostgrestError & { code: string };
+
+const isNoRowsError = (error: PostgrestError | null): error is MaybeSingleError => {
+  return Boolean(error && (error as MaybeSingleError).code === "PGRST116");
+};
+
+const sanitizeIlikeValue = (value: string) =>
+  value
+    .replace(/[%_]/g, (character) => `\\${character}`)
+    .replace(/,/g, " ")
+    .trim();
+
+const mapAppUserRow = (row: AppUserRow): AppUser => ({
+  id: row.id,
+  username: row.username,
+  password: row.password,
+  fullName: row.full_name ?? undefined,
+  email: row.email ?? undefined,
+  isActive: row.is_active,
+  createdAt: row.created_at,
 });
 
-export const initializeLocalDb = () => {
-  if (!isBrowser) return;
+const mapAccessLogRow = (row: AccessLogRow): AccessLog => ({
+  id: row.id,
+  username: row.username,
+  role: row.role,
+  loggedAt: row.logged_at,
+});
 
-  if (!window.localStorage.getItem(USERS_KEY)) {
-    const defaultUsers: AppUser[] = [
-      createSeedUser("prueba", "123", "Usuario de prueba", "demo.empleador@example.com"),
-    ];
-    writeToStorage<AppUser[]>(USERS_KEY, defaultUsers);
-  }
+const mapCandidateViewRow = (row: CandidateViewRow): CandidateViewLog => ({
+  id: row.id,
+  employerUsername: row.employer_username,
+  candidateId: row.candidate_id,
+  candidateName: row.candidate_name,
+  viewedAt: row.viewed_at,
+});
 
-  if (!window.localStorage.getItem(LOGS_KEY)) {
-    writeToStorage<AccessLog[]>(LOGS_KEY, []);
-  }
+const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => ({
+  id: row.id,
+  employerUsername: row.employer_username,
+  employerEmail: row.employer_email,
+  employerName: row.employer_name ?? undefined,
+  candidateId: row.candidate_id,
+  candidateName: row.candidate_name,
+  candidateEmail: row.candidate_email,
+  availability: row.availability,
+  requestedAt: row.requested_at,
+});
 
-  if (!window.localStorage.getItem(CANDIDATE_VIEWS_KEY)) {
-    writeToStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
-  }
+const mapSearchLogRow = (row: SearchLogRow): SearchLog => ({
+  id: row.id,
+  employerUsername: row.employer_username,
+  query: row.query,
+  candidateNames: row.candidate_names ?? [],
+  searchedAt: row.searched_at,
+  updatedAt: row.updated_at ?? undefined,
+});
 
-  if (!window.localStorage.getItem(SCHEDULE_REQUESTS_KEY)) {
-    writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
-  }
-
-  if (!window.localStorage.getItem(EMPLOYER_SEARCHES_KEY)) {
-    writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
-  }
+export const initializeLocalDb = async () => {
+  await ensureSupabaseSession();
 };
 
 export const getStoredSession = (): SessionUser | null => {
@@ -106,111 +123,238 @@ export const persistSession = (session: SessionUser | null) => {
   }
 };
 
-export const getUsers = (): AppUser[] => {
-  const stored = readFromStorage<(AppUser & { email?: string })[]>(USERS_KEY, []);
+export const getUsers = async (): Promise<AppUser[]> => {
+  await ensureSupabaseSession();
 
-  let hasChanges = false;
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .order("created_at", { ascending: true });
 
-  const migratedUsers = stored.map((user) => {
-    const normalizedUsername = user.username?.trim();
-    const normalizedEmail = (user as AppUser & { email?: string }).email?.trim();
-
-    const nextUser: AppUser & { email?: string } = {
-      ...user,
-      username: normalizedUsername || normalizedEmail || "",
-      email: normalizedEmail,
-    };
-
-    if (normalizedUsername !== user.username) {
-      hasChanges = true;
-    }
-
-    if (normalizedEmail !== (user as AppUser & { email?: string }).email) {
-      hasChanges = true;
-    }
-
-    if (!normalizedUsername && normalizedEmail) {
-      hasChanges = true;
-    }
-
-    return nextUser;
-  }).filter((user): user is AppUser => Boolean(user.username));
-
-  if (hasChanges) {
-    writeToStorage<AppUser[]>(USERS_KEY, migratedUsers);
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
   }
 
-  return migratedUsers;
+  return (data ?? []).map(mapAppUserRow);
 };
 
-export const getAccessLogs = (): AccessLog[] => {
-  const stored = readFromStorage<(AccessLog & { userEmail?: string })[]>(LOGS_KEY, []);
+const getUserByIdentifierInternal = async (identifier: string): Promise<AppUserRow | null> => {
+  const normalized = identifier.trim();
 
-  let hasChanges = false;
-
-  const migratedLogs = stored.map((log) => {
-    if (log.username) {
-      return log;
-    }
-
-    if ((log as AccessLog & { userEmail: string }).userEmail) {
-      const { userEmail, ...rest } = log as AccessLog & { userEmail: string };
-      hasChanges = true;
-      return { ...rest, username: userEmail } as AccessLog;
-    }
-
-    return log as AccessLog;
-  });
-
-  if (hasChanges) {
-    writeToStorage<AccessLog[]>(LOGS_KEY, migratedLogs);
+  if (!normalized) {
+    return null;
   }
 
-  return migratedLogs.sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  await ensureSupabaseSession();
+
+  const sanitized = sanitizeIlikeValue(normalized.toLowerCase());
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("*")
+    .or(`username.ilike.${sanitized},email.ilike.${sanitized}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isNoRowsError(error)) {
+      return null;
+    }
+
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return data ?? null;
 };
 
-export const addAccessLog = (username: string, role: UserRole) => {
-  const logs = readFromStorage<AccessLog[]>(LOGS_KEY, []);
-
-  const newLog: AccessLog = {
-    id: generateId(),
-    username,
-    role,
-    loggedAt: new Date().toISOString(),
-  };
-
-  logs.push(newLog);
-  writeToStorage(LOGS_KEY, logs);
-
-  return newLog;
+export const getUserByIdentifier = async (identifier: string): Promise<AppUser | null> => {
+  const row = await getUserByIdentifierInternal(identifier);
+  return row ? mapAppUserRow(row) : null;
 };
 
-export const getCandidateViews = (): CandidateViewLog[] => {
-  const stored = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
+export const validateUserCredentials = async (
+  identifier: string,
+  password: string,
+): Promise<AppUser | null> => {
+  const userRow = await getUserByIdentifierInternal(identifier);
 
-  const sanitized = stored
-    .map((view) => {
-      if (!view.employerUsername && (view as CandidateViewLog & { username?: string }).username) {
-        const { username, ...rest } = view as CandidateViewLog & { username: string };
-        return { ...rest, employerUsername: username };
-      }
+  if (!userRow) {
+    return null;
+  }
 
-      return view;
+  if (!userRow.is_active) {
+    return null;
+  }
+
+  if (userRow.password !== password.trim()) {
+    return null;
+  }
+
+  return mapAppUserRow(userRow);
+};
+
+export const addUser = async (
+  username: string,
+  password: string,
+  fullName?: string,
+  email?: string,
+): Promise<AppUser> => {
+  const normalizedUsername = username.trim();
+  const normalizedPassword = password.trim();
+  const normalizedEmail = email?.trim();
+
+  if (!normalizedUsername) {
+    throw new Error("El nombre de usuario no es válido.");
+  }
+
+  if (!normalizedPassword) {
+    throw new Error("La contraseña no es válida.");
+  }
+
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .insert({
+      username: normalizedUsername,
+      password: normalizedPassword,
+      full_name: fullName?.trim() || null,
+      email: normalizedEmail || null,
     })
-    .filter((view) => Boolean(view.employerUsername) && Boolean(view.candidateId) && Boolean(view.candidateName));
+    .select("*")
+    .single();
 
-  if (sanitized.length !== stored.length) {
-    writeToStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, sanitized);
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
   }
 
-  return sanitized.sort((a, b) => new Date(b.viewedAt).getTime() - new Date(a.viewedAt).getTime());
+  return mapAppUserRow(data);
 };
 
-export const getCandidateViewsByUser = (): Record<string, CandidateViewLog[]> => {
-  const views = getCandidateViews();
+export const toggleUserStatus = async (userId: string): Promise<AppUser | null> => {
+  await ensureSupabaseSession();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("app_users")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (existingError) {
+    if (isNoRowsError(existingError)) {
+      return null;
+    }
+
+    throw new Error(`[supabase] ${existingError.message}`);
+  }
+
+  if (!existing) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .update({ is_active: !existing.is_active })
+    .eq("id", userId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return mapAppUserRow(data);
+};
+
+export const updateUserEmail = async (userId: string, email: string): Promise<AppUser | null> => {
+  const normalizedEmail = email.trim();
+
+  if (!normalizedEmail) {
+    throw new Error("El correo electrónico es obligatorio.");
+  }
+
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("app_users")
+    .update({ email: normalizedEmail })
+    .eq("id", userId)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    if (isNoRowsError(error)) {
+      return null;
+    }
+
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return data ? mapAppUserRow(data) : null;
+};
+
+export const removeUser = async (userId: string) => {
+  await ensureSupabaseSession();
+
+  const { error } = await supabase.from("app_users").delete().eq("id", userId);
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+};
+
+export const getAccessLogs = async (): Promise<AccessLog[]> => {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("access_logs")
+    .select("*")
+    .order("logged_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return (data ?? []).map(mapAccessLogRow);
+};
+
+export const addAccessLog = async (username: string, role: UserRole): Promise<AccessLog> => {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("access_logs")
+    .insert({ username, role })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return mapAccessLogRow(data);
+};
+
+export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("candidate_view_logs")
+    .select("*")
+    .order("viewed_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return (data ?? []).map(mapCandidateViewRow);
+};
+
+export const getCandidateViewsByUser = async (): Promise<Record<string, CandidateViewLog[]>> => {
+  const views = await getCandidateViews();
 
   return views.reduce<Record<string, CandidateViewLog[]>>((accumulator, view) => {
     const key = view.employerUsername.trim().toLowerCase();
+
     if (!accumulator[key]) {
       accumulator[key] = [];
     }
@@ -220,83 +364,86 @@ export const getCandidateViewsByUser = (): Record<string, CandidateViewLog[]> =>
   }, {});
 };
 
-export const getSearchLogs = (): SearchLog[] => {
-  const stored = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+export const recordCandidateView = async (
+  employerUsername: string,
+  candidateId: string,
+  candidateName: string,
+): Promise<CandidateViewLog | null> => {
+  const normalizedUsername = employerUsername?.trim();
+  const normalizedCandidateId = candidateId?.trim();
+  const normalizedCandidateName = candidateName?.trim();
 
-  const sanitized = stored
-    .filter((log) => {
-      const hasEmployer = Boolean(log.employerUsername?.trim());
-      const hasQuery = Boolean(log.query?.trim());
-      const hasTimestamp = Boolean(log.searchedAt);
-
-      return hasEmployer && hasQuery && hasTimestamp;
-    })
-    .map((log) => ({
-      ...log,
-      employerUsername: log.employerUsername.trim(),
-      query: log.query.trim(),
-      candidateNames: Array.isArray(log.candidateNames)
-        ? log.candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
-        : [],
-      searchedAt: log.searchedAt,
-      updatedAt: log.updatedAt,
-    }));
-
-  if (sanitized.length !== stored.length) {
-    writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, sanitized);
+  if (!normalizedUsername || !normalizedCandidateId || !normalizedCandidateName) {
+    return null;
   }
 
-  return sanitized.sort((a, b) => new Date(b.searchedAt).getTime() - new Date(a.searchedAt).getTime());
-};
+  await ensureSupabaseSession();
 
-export const getSearchLogsByUser = (): Record<string, SearchLog[]> => {
-  const logs = getSearchLogs();
+  const { data: existing, error: existingError } = await supabase
+    .from("candidate_view_logs")
+    .select("*")
+    .eq("employer_username", normalizedUsername)
+    .eq("candidate_id", normalizedCandidateId)
+    .maybeSingle();
 
-  return logs.reduce<Record<string, SearchLog[]>>((accumulator, log) => {
-    const key = log.employerUsername.trim().toLowerCase();
+  if (existingError && !isNoRowsError(existingError)) {
+    throw new Error(`[supabase] ${existingError.message}`);
+  }
 
-    if (!accumulator[key]) {
-      accumulator[key] = [];
+  const timestamp = new Date().toISOString();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("candidate_view_logs")
+      .update({
+        candidate_name: normalizedCandidateName,
+        viewed_at: timestamp,
+      })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(`[supabase] ${error.message}`);
     }
 
-    accumulator[key].push(log);
-    return accumulator;
-  }, {});
-};
-
-export const getScheduleRequests = (): ScheduleRequestLog[] => {
-  const stored = readFromStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
-
-  const sanitized = stored
-    .filter((request) => {
-      const hasEmployer = Boolean(request.employerUsername?.trim());
-      const hasEmployerEmail = Boolean(request.employerEmail?.trim());
-      const hasCandidate = Boolean(request.candidateId?.trim() && request.candidateName?.trim());
-      const hasCandidateEmail = Boolean(request.candidateEmail?.trim());
-      const hasAvailability = Boolean(request.availability?.trim());
-
-      return hasEmployer && hasEmployerEmail && hasCandidate && hasCandidateEmail && hasAvailability;
-    })
-    .map((request) => ({
-      ...request,
-      employerUsername: request.employerUsername.trim(),
-      employerEmail: request.employerEmail.trim(),
-      employerName: request.employerName?.trim() || undefined,
-      candidateId: request.candidateId.trim(),
-      candidateName: request.candidateName.trim(),
-      candidateEmail: request.candidateEmail.trim(),
-      availability: request.availability.trim(),
-      requestedAt: request.requestedAt,
-    }));
-
-  if (sanitized.length !== stored.length) {
-    writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, sanitized);
+    return mapCandidateViewRow(data);
   }
 
-  return sanitized.sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
+  const { data, error } = await supabase
+    .from("candidate_view_logs")
+    .insert({
+      employer_username: normalizedUsername,
+      candidate_id: normalizedCandidateId,
+      candidate_name: normalizedCandidateName,
+      viewed_at: timestamp,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return mapCandidateViewRow(data);
 };
 
-export const recordScheduleRequest = (params: {
+export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("schedule_requests")
+    .select("*")
+    .order("requested_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return (data ?? []).map(mapScheduleRequestRow);
+};
+
+export const recordScheduleRequest = async (params: {
   employerUsername: string;
   employerEmail: string;
   candidateId: string;
@@ -304,7 +451,7 @@ export const recordScheduleRequest = (params: {
   candidateEmail: string;
   availability: string;
   employerName?: string;
-}): ScheduleRequestLog | null => {
+}): Promise<ScheduleRequestLog | null> => {
   const normalizedEmployerUsername = params.employerUsername?.trim();
   const normalizedEmployerEmail = params.employerEmail?.trim();
   const normalizedCandidateId = params.candidateId?.trim();
@@ -323,80 +470,64 @@ export const recordScheduleRequest = (params: {
     return null;
   }
 
-  const requests = readFromStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, []);
+  await ensureSupabaseSession();
 
-  const newRequest: ScheduleRequestLog = {
-    id: generateId(),
-    employerUsername: normalizedEmployerUsername,
-    employerEmail: normalizedEmployerEmail,
-    employerName: params.employerName?.trim() || undefined,
-    candidateId: normalizedCandidateId,
-    candidateName: normalizedCandidateName,
-    candidateEmail: normalizedCandidateEmail,
-    availability: normalizedAvailability,
-    requestedAt: new Date().toISOString(),
-  };
+  const { data, error } = await supabase
+    .from("schedule_requests")
+    .insert({
+      employer_username: normalizedEmployerUsername,
+      employer_email: normalizedEmployerEmail,
+      employer_name: params.employerName?.trim() || null,
+      candidate_id: normalizedCandidateId,
+      candidate_name: normalizedCandidateName,
+      candidate_email: normalizedCandidateEmail,
+      availability: normalizedAvailability,
+    })
+    .select("*")
+    .single();
 
-  requests.push(newRequest);
-  writeToStorage<ScheduleRequestLog[]>(SCHEDULE_REQUESTS_KEY, requests);
-
-  return newRequest;
-};
-
-export const recordCandidateView = (
-  employerUsername: string,
-  candidateId: string,
-  candidateName: string,
-): CandidateViewLog | null => {
-  if (!employerUsername?.trim() || !candidateId?.trim() || !candidateName?.trim()) {
-    return null;
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
   }
 
-  const normalizedUsername = employerUsername.trim();
-  const normalizedCandidateId = candidateId.trim();
-  const normalizedCandidateName = candidateName.trim();
-
-  const currentViews = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
-
-  const existingIndex = currentViews.findIndex(
-    (view) =>
-      view.employerUsername.trim().toLowerCase() === normalizedUsername.toLowerCase() &&
-      view.candidateId === normalizedCandidateId,
-  );
-
-  const timestamp = new Date().toISOString();
-
-  if (existingIndex >= 0) {
-    const updatedView: CandidateViewLog = {
-      ...currentViews[existingIndex],
-      candidateName: normalizedCandidateName,
-      viewedAt: timestamp,
-    };
-
-    currentViews[existingIndex] = updatedView;
-    writeToStorage(CANDIDATE_VIEWS_KEY, currentViews);
-    return updatedView;
-  }
-
-  const newView: CandidateViewLog = {
-    id: generateId(),
-    employerUsername: normalizedUsername,
-    candidateId: normalizedCandidateId,
-    candidateName: normalizedCandidateName,
-    viewedAt: timestamp,
-  };
-
-  currentViews.push(newView);
-  writeToStorage(CANDIDATE_VIEWS_KEY, currentViews);
-
-  return newView;
+  return mapScheduleRequestRow(data);
 };
 
-export const recordSearchQuery = (
+export const getSearchLogs = async (): Promise<SearchLog[]> => {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase
+    .from("employer_search_logs")
+    .select("*")
+    .order("searched_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return (data ?? []).map(mapSearchLogRow);
+};
+
+export const getSearchLogsByUser = async (): Promise<Record<string, SearchLog[]>> => {
+  const logs = await getSearchLogs();
+
+  return logs.reduce<Record<string, SearchLog[]>>((accumulator, log) => {
+    const key = log.employerUsername.trim().toLowerCase();
+
+    if (!accumulator[key]) {
+      accumulator[key] = [];
+    }
+
+    accumulator[key].push(log);
+    return accumulator;
+  }, {});
+};
+
+export const recordSearchQuery = async (
   employerUsername: string,
   query: string,
   candidateNames?: string[],
-): SearchLog | null => {
+): Promise<SearchLog | null> => {
   if (!employerUsername?.trim() || !query?.trim()) {
     return null;
   }
@@ -407,182 +538,49 @@ export const recordSearchQuery = (
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
 
-  const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
+  await ensureSupabaseSession();
 
-  const timestamp = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("employer_search_logs")
+    .insert({
+      employer_username: normalizedUsername,
+      query: normalizedQuery,
+      candidate_names: normalizedCandidates,
+    })
+    .select("*")
+    .single();
 
-  const newLog: SearchLog = {
-    id: generateId(),
-    employerUsername: normalizedUsername,
-    query: normalizedQuery,
-    candidateNames: normalizedCandidates,
-    searchedAt: timestamp,
-  };
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
 
-  searches.push(newLog);
-  writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, searches);
-
-  return newLog;
+  return mapSearchLogRow(data);
 };
 
-export const updateSearchLogCandidates = (
+export const updateSearchLogCandidates = async (
   logId: string,
   candidateNames: string[],
-): SearchLog | null => {
+): Promise<SearchLog | null> => {
   const normalizedCandidates = candidateNames
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
 
-  const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
-  const index = searches.findIndex((log) => log.id === logId);
+  await ensureSupabaseSession();
 
-  if (index === -1) {
-    return null;
-  }
+  const { data, error } = await supabase
+    .from("employer_search_logs")
+    .update({ candidate_names: normalizedCandidates })
+    .eq("id", logId)
+    .select("*")
+    .maybeSingle();
 
-  const updatedLog: SearchLog = {
-    ...searches[index],
-    candidateNames: normalizedCandidates,
-    updatedAt: new Date().toISOString(),
-  };
-
-  searches[index] = updatedLog;
-  writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, searches);
-
-  return updatedLog;
-};
-
-export const validateUserCredentials = (identifier: string, password: string): AppUser | null => {
-  const users = getUsers();
-  const normalizedIdentifier = identifier.trim().toLowerCase();
-  const normalizedPassword = password.trim();
-
-  const user = users.find(candidate => {
-    const usernameMatch = candidate.username.trim().toLowerCase() === normalizedIdentifier;
-    const emailMatch = candidate.email?.trim().toLowerCase() === normalizedIdentifier;
-
-    return (
-      (usernameMatch || emailMatch) &&
-      candidate.password === normalizedPassword &&
-      candidate.isActive
-    );
-  });
-
-  return user ?? null;
-};
-
-export const addUser = (
-  username: string,
-  password: string,
-  fullName?: string,
-  email?: string,
-): AppUser => {
-  const users = getUsers();
-  const normalizedUsername = username.trim();
-  const normalizedPassword = password.trim();
-  const normalizedEmail = email?.trim();
-
-  if (!normalizedUsername) {
-    throw new Error("El nombre de usuario no es válido.");
-  }
-
-  if (!normalizedPassword) {
-    throw new Error("La contraseña no es válida.");
-  }
-
-  const exists = users.some(candidate => {
-    const usernameTaken = candidate.username.toLowerCase() === normalizedUsername.toLowerCase();
-    const emailTaken = normalizedEmail
-      ? candidate.email?.toLowerCase() === normalizedEmail.toLowerCase()
-      : false;
-    return usernameTaken || emailTaken;
-  });
-
-  if (exists) {
-    throw new Error("Ya existe un usuario con este nombre o correo electrónico.");
-  }
-
-  const newUser: AppUser = {
-    id: generateId(),
-    username: normalizedUsername,
-    password: normalizedPassword,
-    fullName: fullName?.trim() || undefined,
-    email: normalizedEmail || undefined,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  };
-
-  const updatedUsers = [...users, newUser];
-  writeToStorage(USERS_KEY, updatedUsers);
-
-  return newUser;
-};
-
-export const toggleUserStatus = (userId: string): AppUser | null => {
-  const users = getUsers();
-  const updatedUsers = users.map((user) => {
-    if (user.id !== userId) return user;
-
-    return { ...user, isActive: !user.isActive };
-  });
-
-  writeToStorage(USERS_KEY, updatedUsers);
-
-  return updatedUsers.find((user) => user.id === userId) ?? null;
-};
-
-export const updateUserEmail = (userId: string, email: string): AppUser | null => {
-  const users = getUsers();
-  const normalizedEmail = email.trim();
-
-  if (!normalizedEmail) {
-    throw new Error("El correo electrónico es obligatorio.");
-  }
-
-  const emailAlreadyUsed = users.some((user) => {
-    if (user.id === userId) return false;
-    return user.email?.trim().toLowerCase() === normalizedEmail.toLowerCase();
-  });
-
-  if (emailAlreadyUsed) {
-    throw new Error("Ya existe un usuario con este correo electrónico.");
-  }
-
-  const updatedUsers = users.map((user) => {
-    if (user.id !== userId) return user;
-
-    return { ...user, email: normalizedEmail };
-  });
-
-  writeToStorage(USERS_KEY, updatedUsers);
-
-  return updatedUsers.find((user) => user.id === userId) ?? null;
-};
-
-export const removeUser = (userId: string) => {
-  const users = getUsers();
-  const removedUser = users.find((user) => user.id === userId);
-  const filtered = users.filter((user) => user.id !== userId);
-
-  writeToStorage(USERS_KEY, filtered);
-
-  if (removedUser) {
-    const views = readFromStorage<CandidateViewLog[]>(CANDIDATE_VIEWS_KEY, []);
-    const remainingViews = views.filter(
-      (view) => view.employerUsername.trim().toLowerCase() !== removedUser.username.trim().toLowerCase(),
-    );
-
-    if (remainingViews.length !== views.length) {
-      writeToStorage(CANDIDATE_VIEWS_KEY, remainingViews);
+  if (error) {
+    if (isNoRowsError(error)) {
+      return null;
     }
 
-    const searches = readFromStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, []);
-    const remainingSearches = searches.filter(
-      (log) => log.employerUsername.trim().toLowerCase() !== removedUser.username.trim().toLowerCase(),
-    );
-
-    if (remainingSearches.length !== searches.length) {
-      writeToStorage<SearchLog[]>(EMPLOYER_SEARCHES_KEY, remainingSearches);
-    }
+    throw new Error(`[supabase] ${error.message}`);
   }
+
+  return data ? mapSearchLogRow(data) : null;
 };

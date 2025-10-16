@@ -36,14 +36,51 @@ const AdminDashboard = () => {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [meetingRequests, setMeetingRequests] = useState<ScheduleRequestLog[]>([]);
   const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
+
+  const loadDashboardData = useCallback(
+    async (isRefresh = false): Promise<boolean> => {
+      if (isRefresh) {
+        setIsRefreshingData(true);
+      } else {
+        setIsLoadingData(true);
+      }
+
+      try {
+        const [usersData, logsData, viewsByUser, requestsData, searchesByUser] = await Promise.all([
+          getUsers(),
+          getAccessLogs(),
+          getCandidateViewsByUser(),
+          getScheduleRequests(),
+          getSearchLogsByUser(),
+        ]);
+
+        setUsers(usersData);
+        setLogs(logsData);
+        setCandidateViews(viewsByUser);
+        setMeetingRequests(requestsData);
+        setSearchLogs(searchesByUser);
+        return true;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "No se pudieron cargar los datos del panel.";
+        toast({ title: "Error al cargar datos", description: message, variant: "destructive" });
+        return false;
+      } finally {
+        if (isRefresh) {
+          setIsRefreshingData(false);
+        } else {
+          setIsLoadingData(false);
+        }
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
-    setUsers(getUsers());
-    setLogs(getAccessLogs());
-    setCandidateViews(getCandidateViewsByUser());
-    setMeetingRequests(getScheduleRequests());
-    setSearchLogs(getSearchLogsByUser());
-  }, []);
+    void loadDashboardData();
+  }, [loadDashboardData]);
 
   const activeUsers = useMemo(() => users.filter((user) => user.isActive).length, [users]);
 
@@ -89,10 +126,8 @@ const AdminDashboard = () => {
     setIsCreatingUser(true);
 
     try {
-      const createdUser = addUser(newUserUsername, newUserPassword, newUserName, newUserEmail);
+      const createdUser = await addUser(newUserUsername, newUserPassword, newUserName, newUserEmail);
       setUsers((previous) => [...previous, createdUser]);
-      setLogs(getAccessLogs());
-      setCandidateViews(getCandidateViewsByUser());
       toast({
         title: "Usuario creado correctamente",
         description: `${createdUser.username} ahora puede iniciar sesión en la plataforma.`,
@@ -109,25 +144,29 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleToggleUser = (userId: string) => {
-    const updated = toggleUserStatus(userId);
-    if (!updated) return;
+  const handleToggleUser = async (userId: string) => {
+    try {
+      const updated = await toggleUserStatus(userId);
+      if (!updated) return;
 
-    setUsers((previous) => previous.map((user) => (user.id === updated.id ? updated : user)));
-    toast({
-      title: updated.isActive ? "Usuario habilitado" : "Usuario deshabilitado",
-      description: updated.isActive
-        ? "El usuario podrá iniciar sesión nuevamente."
-        : "El usuario ya no podrá iniciar sesión hasta ser habilitado.",
-    });
+      setUsers((previous) => previous.map((user) => (user.id === updated.id ? updated : user)));
+      toast({
+        title: updated.isActive ? "Usuario habilitado" : "Usuario deshabilitado",
+        description: updated.isActive
+          ? "El usuario podrá iniciar sesión nuevamente."
+          : "El usuario ya no podrá iniciar sesión hasta ser habilitado.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo actualizar el usuario.";
+      toast({ title: "Error al actualizar", description: message, variant: "destructive" });
+    }
   };
 
-  const handleRefreshData = () => {
-    setLogs(getAccessLogs());
-    setCandidateViews(getCandidateViewsByUser());
-    setMeetingRequests(getScheduleRequests());
-    setSearchLogs(getSearchLogsByUser());
-    toast({ title: "Registros actualizados" });
+  const handleRefreshData = async () => {
+    const success = await loadDashboardData(true);
+    if (success) {
+      toast({ title: "Registros actualizados" });
+    }
   };
 
   const handleLogout = () => {
@@ -254,12 +293,19 @@ const AdminDashboard = () => {
                 Habilita o deshabilita accesos según las necesidades del negocio y consulta sus actividades recientes.
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={handleRefreshData}>
-              Actualizar datos
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshData}
+              disabled={isLoadingData || isRefreshingData}
+            >
+              {isRefreshingData ? "Actualizando..." : "Actualizar datos"}
             </Button>
           </CardHeader>
           <CardContent>
-            {users.length === 0 ? (
+            {isLoadingData ? (
+              <p className="text-sm text-muted-foreground">Cargando información de usuarios…</p>
+            ) : users.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aún no se han creado usuarios.</p>
             ) : (
               <Table>
@@ -457,7 +503,9 @@ const AdminDashboard = () => {
             <CardDescription>Consulta quién ingresó a la aplicación y cuándo lo hizo.</CardDescription>
           </CardHeader>
           <CardContent>
-            {logs.length === 0 ? (
+            {isLoadingData ? (
+              <p className="text-sm text-muted-foreground">Cargando registros de acceso…</p>
+            ) : logs.length === 0 ? (
               <p className="text-sm text-muted-foreground">Aún no existen accesos registrados.</p>
             ) : (
               <Table>

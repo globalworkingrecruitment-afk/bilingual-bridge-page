@@ -29,14 +29,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    initializeLocalDb();
+    let active = true;
 
-    const storedSession = getStoredSession();
-    if (storedSession) {
-      setCurrentUser(storedSession);
-    }
+    const bootstrap = async () => {
+      try {
+        await initializeLocalDb();
+        if (!active) return;
 
-    setLoading(false);
+        const storedSession = getStoredSession();
+        if (storedSession) {
+          setCurrentUser(storedSession);
+        }
+      } catch (error) {
+        console.error("No se pudo inicializar la sesión local", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -56,11 +73,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const adminUser: SessionUser = { username: ADMIN_USERNAME, role: "admin" };
       setCurrentUser(adminUser);
       persistSession(adminUser);
-      addAccessLog(adminUser.username, adminUser.role);
+      await addAccessLog(adminUser.username, adminUser.role);
       return adminUser;
     }
 
-    const matchedUser = validateUserCredentials(normalizedUsername, trimmedPassword);
+    const matchedUser = await validateUserCredentials(normalizedUsername, trimmedPassword);
 
     if (!matchedUser) {
       throw new Error("Credenciales incorrectas o usuario inactivo.");
@@ -73,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const sessionUser: SessionUser = { username: matchedUser.username, role: "user" };
     setCurrentUser(sessionUser);
     persistSession(sessionUser);
-    addAccessLog(sessionUser.username, sessionUser.role);
+    await addAccessLog(sessionUser.username, sessionUser.role);
 
     return sessionUser;
   };
