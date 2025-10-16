@@ -7,8 +7,7 @@ import { CandidatesSection } from "@/components/CandidatesSection";
 import { ExperienceFilters } from "@/components/ExperienceFilters";
 import { englishContent } from "@/content/english";
 import { norwegianContent } from "@/content/norwegian";
-import { mockCandidates } from "@/data/mockCandidates";
-import { Candidate, CandidateLocale, CareSetting } from "@/types/candidate";
+import { Candidate, CandidateLocale } from "@/types/candidate";
 import { candidateMatchesCriteria, parseSearchQuery } from "@/lib/search";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -16,18 +15,26 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { getN8nWebhookUrl } from "@/lib/env";
 import { recordSearchQuery, updateSearchLogCandidates } from "@/lib/localDb";
+import { useCandidateData } from "@/hooks/useCandidateData";
 
 const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
 
 const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedSetting, setSelectedSetting] = useState<CareSetting | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [webhookCandidateNames, setWebhookCandidateNames] = useState<string[]>([]);
   const [n8nWebhook] = useState<string>(() => getN8nWebhookUrl() ?? DEFAULT_WEBHOOK_URL);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
-  const candidatesSectionRef = useRef<HTMLDivElement | null>(null);
+  const {
+    candidates,
+    loading: candidatesLoading,
+    refreshing: candidatesRefreshing,
+    error: candidatesError,
+    refresh: reloadCandidates,
+  } = useCandidateData();
+  const candidatesSectionRef = useRef<HTMLElement | null>(null);
   const lastSearchLogRef = useRef<{ query: string; logId: string | null } | null>(null);
 
   const content = language === "en" ? englishContent : norwegianContent;
@@ -73,34 +80,54 @@ const Index = () => {
   };
 
   const experienceSections = useMemo(() => {
-    const counts = new Map<CareSetting, Set<string>>([
-      ["domicilio_geriatrico", new Set()],
-      ["hospitalario", new Set()],
-      ["urgencias", new Set()],
-    ]);
+    if (candidates.length === 0) {
+      return [];
+    }
 
-    mockCandidates.forEach(candidate => {
-      const setting = candidate.experienceDetail?.care_setting;
-      if (!setting) return;
+    const statusCounts = new Map<string, number>();
 
-      const bucket = counts.get(setting);
-      bucket?.add(candidate.id);
+    candidates.forEach(candidate => {
+      const statusKey = candidate.estado?.trim().toLowerCase() || "desconocido";
+      statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
     });
 
-    const order: CareSetting[] = [
-      "domicilio_geriatrico",
-      "hospitalario",
-      "urgencias",
-    ];
+    const order = ["activo", "reservado", "inactivo"];
+    const groups = content.candidates.filters.groups as Record<string, string>;
 
-    return order
-      .map(setting => ({
-        id: setting,
-        label: content.candidates.filters.groups[setting],
-        count: counts.get(setting)?.size ?? 0,
-      }))
-      .filter(section => section.count > 0);
-  }, [content.candidates.filters.groups]);
+    const normalizeLabel = (status: string) => {
+      const label = groups[status];
+      if (label) {
+        return label;
+      }
+
+      return status
+        .split(/[_-]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    };
+
+    const sections = Array.from(statusCounts.entries()).map(([status, count]) => ({
+      id: status,
+      label: normalizeLabel(status),
+      count,
+    }));
+
+    const orderedSections = sections.sort((a, b) => {
+      const indexA = order.indexOf(a.id);
+      const indexB = order.indexOf(b.id);
+
+      if (indexA === -1 && indexB === -1) {
+        return a.label.localeCompare(b.label);
+      }
+
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+
+      return indexA - indexB;
+    });
+
+    return orderedSections;
+  }, [candidates, content.candidates.filters.groups]);
 
   const searchCriteria = useMemo(() => parseSearchQuery(searchQuery), [searchQuery]);
 
@@ -110,22 +137,25 @@ const Index = () => {
   );
 
   const filteredCandidates = useMemo(() => {
-    return mockCandidates.filter((candidate: Candidate) => {
-      const matchesSelectedExperience = selectedSetting
-        ? candidate.experienceDetail?.care_setting === selectedSetting
-        : true;
+    if (candidates.length === 0) {
+      return [];
+    }
 
-      if (!matchesSelectedExperience) {
+    return candidates.filter((candidate: Candidate) => {
+      const candidateStatus = candidate.estado?.trim().toLowerCase() || "desconocido";
+      const matchesSelectedStatus = selectedStatus ? candidateStatus === selectedStatus : true;
+
+      if (!matchesSelectedStatus) {
         return false;
       }
 
       if (normalizedWebhookNames.size > 0) {
-        return normalizedWebhookNames.has(candidate.full_name.trim().toLowerCase());
+        return normalizedWebhookNames.has(candidate.nombre.trim().toLowerCase());
       }
 
       return candidateMatchesCriteria(candidate, searchCriteria);
     });
-  }, [searchCriteria, selectedSetting, normalizedWebhookNames]);
+  }, [candidates, searchCriteria, selectedStatus, normalizedWebhookNames]);
 
   useEffect(() => {
     if (webhookCandidateNames.length > 0) {
@@ -133,8 +163,8 @@ const Index = () => {
     }
   }, [webhookCandidateNames]);
 
-  const handleSelectExperience = (setting: CareSetting | null) => {
-    setSelectedSetting(prev => (prev === setting ? null : setting));
+  const handleSelectStatus = (status: string | null) => {
+    setSelectedStatus(prev => (prev === status ? null : status));
   };
 
   const handleLogout = () => {
@@ -183,34 +213,62 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              {language === "en" ? "Available Professionals" : "Tilgjengelige Fagfolk"}
+              {content.candidates.title}
             </h2>
-            <p className="text-lg text-muted-foreground">
-              {language === "en" 
-                ? "Find the perfect healthcare professional for your team" 
-                : "Finn den perfekte helsepersonell til teamet ditt"}
-            </p>
+            <p className="text-lg text-muted-foreground">{content.candidates.subtitle}</p>
           </div>
-          
+
           <CandidateSearch
             onSearch={handleSearch}
             n8nWebhookUrl={n8nWebhook}
             placeholder={content.search.placeholder}
             searchLabel={content.search.button}
           />
-          <ExperienceFilters
-            sections={experienceSections}
-            selectedSection={selectedSetting}
-            onSelect={handleSelectExperience}
-            labels={content.candidates.filters}
-          />
-          <div ref={candidatesSectionRef}>
-            <CandidatesSection
-              candidates={filteredCandidates}
-              content={content}
-              locale={language}
-            />
-          </div>
+
+          {candidatesLoading ? (
+            <div className="py-16 text-center text-muted-foreground">
+              {content.candidates.loading}
+            </div>
+          ) : candidatesError && candidates.length === 0 ? (
+            <div className="py-16 text-center space-y-4">
+              <p className="text-xl font-semibold text-destructive">
+                {content.candidates.loadError.title}
+              </p>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                {content.candidates.loadError.description}
+              </p>
+              <div>
+                <Button type="button" variant="outline" onClick={reloadCandidates}>
+                  {content.candidates.loadError.retry}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {candidatesError && candidates.length > 0 && (
+                <div className="flex flex-col items-center gap-3 mb-6 text-center">
+                  <p className="text-sm text-destructive">
+                    {content.candidates.loadError.description}
+                  </p>
+                  <Button type="button" size="sm" variant="outline" onClick={reloadCandidates}>
+                    {content.candidates.loadError.retry}
+                  </Button>
+                </div>
+              )}
+              <ExperienceFilters
+                sections={experienceSections}
+                selectedSection={selectedStatus}
+                onSelect={handleSelectStatus}
+                labels={content.candidates.filters}
+              />
+              {candidatesRefreshing && (
+                <div className="flex justify-center mb-6">
+                  <Badge variant="outline">{content.candidates.refreshing}</Badge>
+                </div>
+              )}
+              <CandidatesSection candidates={filteredCandidates} content={content} locale={language} />
+            </>
+          )}
         </div>
       </section>
 

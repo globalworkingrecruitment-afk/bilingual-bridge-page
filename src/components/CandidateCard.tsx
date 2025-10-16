@@ -25,7 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getCandidateProfile, getExperienceDuration, getExperienceTitle } from "@/lib/candidates";
+import { buildExperienceSummary, getCandidateProfile } from "@/lib/candidates";
 import {
   getUsers,
   recordCandidateView,
@@ -56,8 +56,15 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
   const [scheduleAvailability, setScheduleAvailability] = useState("");
   const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
 
-  const primaryExperience = candidate.experienceDetail;
   const profile = getCandidateProfile(candidate, locale);
+  const experienceSummary = buildExperienceSummary(profile);
+  const languagesLabel = profile.languages.join(", ");
+  const educationLabel = profile.education ?? content.candidateCard.noEducation;
+  const summaryText = profile.cover_letter_summary ?? content.candidateCard.noSummary;
+  const coverLetterText =
+    profile.cover_letter_full ?? profile.cover_letter_summary ?? content.candidateCard.noCoverLetter;
+  const languagesText = languagesLabel || content.candidateCard.noLanguages;
+  const experienceText = experienceSummary || content.candidateCard.noExperience;
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== "user") {
@@ -86,9 +93,9 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       if (!isOpen) return;
       if (!currentUser || currentUser.role !== "user") return;
 
-      recordCandidateView(currentUser.username, candidate.id, candidate.full_name);
+      recordCandidateView(currentUser.username, candidate.id, candidate.nombre);
     },
-    [candidate.full_name, candidate.id, currentUser],
+    [candidate.nombre, candidate.id, currentUser],
   );
 
   const resetScheduleState = () => {
@@ -214,7 +221,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       return;
     }
 
-    const normalizedCandidateEmail = candidate.email.trim();
+    const normalizedCandidateEmail = candidate.correo.trim();
     const normalizedEmployerName = employerProfile?.fullName?.trim();
 
     const payload = {
@@ -222,7 +229,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       usuarioEmpleador: currentUser.username.trim(),
       nombreEmpleador: normalizedEmployerName ?? currentUser.username.trim(),
       emailCandidato: normalizedCandidateEmail,
-      NombreCandidato: candidate.full_name,
+      NombreCandidato: candidate.nombre,
       disponibilidad: normalizedAvailability,
     };
 
@@ -248,7 +255,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
         employerEmail: normalizedEmployerEmail,
         employerName: employerProfile?.fullName,
         candidateId: candidate.id,
-        candidateName: candidate.full_name,
+        candidateName: candidate.nombre,
         candidateEmail: normalizedCandidateEmail,
         availability: normalizedAvailability,
       });
@@ -272,7 +279,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       <CardHeader className="pb-4 space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
-            <h3 className="text-xl font-bold">{candidate.full_name}</h3>
+            <h3 className="text-xl font-bold">{candidate.nombre}</h3>
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 {content.candidateCard.profession}
@@ -311,7 +318,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{candidate.full_name}</DialogTitle>
+                  <DialogTitle>{candidate.nombre}</DialogTitle>
                   <DialogDescription>{content.candidateCard.detailDescription}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -322,7 +329,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                         {content.candidateCard.education}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {profile.education}
+                        {educationLabel}
                       </p>
                     </div>
                   </div>
@@ -333,7 +340,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                         {content.candidateCard.experienceOverview}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {profile.experience}
+                        {experienceText}
                       </p>
                     </div>
                   </div>
@@ -344,7 +351,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                         {content.candidateCard.coverLetterFull}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {profile.cover_letter_full}
+                        {coverLetterText}
                       </p>
                     </div>
                   </div>
@@ -362,7 +369,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
               {content.candidateCard.languages}
             </p>
-            <p className="text-sm text-muted-foreground">{profile.languages}</p>
+            <p className="text-sm text-muted-foreground">{languagesText}</p>
           </div>
         </div>
 
@@ -370,9 +377,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
           <h4 className="text-sm font-semibold text-primary uppercase tracking-wide">
             {content.candidateCard.summary}
           </h4>
-          <p className="text-sm text-muted-foreground whitespace-pre-line">
-            {profile.cover_letter_summary}
-          </p>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">{summaryText}</p>
         </div>
 
         <div className="space-y-3">
@@ -381,16 +386,9 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               <Briefcase className="w-4 h-4" />
               <span>{content.candidateCard.experiences}</span>
             </div>
-            {primaryExperience ? (
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{getExperienceTitle(primaryExperience, locale)}</span>{" "}
-                <span className="italic">({getExperienceDuration(primaryExperience, locale)})</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground italic">
-                {content.candidateCard.noExperience}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground whitespace-pre-line">
+              {experienceText}
+            </p>
           </div>
         </div>
 
@@ -443,7 +441,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-1 text-sm">
-                  <p className="font-semibold text-foreground">{candidate.full_name}</p>
+                  <p className="font-semibold text-foreground">{candidate.nombre}</p>
                   <p className="text-muted-foreground">{profile.profession}</p>
                 </div>
                 <div className="space-y-2">
@@ -486,7 +484,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Candidato</p>
-                  <p className="text-muted-foreground">{candidate.full_name}</p>
+                  <p className="text-muted-foreground">{candidate.nombre}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Disponibilidad propuesta</p>

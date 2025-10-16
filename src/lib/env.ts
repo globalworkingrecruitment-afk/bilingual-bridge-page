@@ -22,6 +22,17 @@ export const getSupabaseClientConfig = () => {
   return { url, key };
 };
 
+export const getSupabaseServiceCredentials = () => {
+  const email = import.meta.env.VITE_SUPABASE_SERVICE_EMAIL?.trim();
+  const password = import.meta.env.VITE_SUPABASE_SERVICE_PASSWORD?.trim();
+
+  if (email && password) {
+    return { email, password };
+  }
+
+  return null;
+};
+
 export const getScheduleWebhookUrl = () =>
   sanitizeExternalUrl(import.meta.env.VITE_SCHEDULE_WEBHOOK_URL, {
     variableName: "VITE_SCHEDULE_WEBHOOK_URL",
