@@ -213,19 +213,29 @@ export const addUser = async (
 
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("app_users")
-    .insert({
-      username: normalizedUsername,
-      password: normalizedPassword,
-      full_name: fullName?.trim() || null,
-      email: normalizedEmail || null,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("admin_create_app_user", {
+    p_username: normalizedUsername,
+    p_password: normalizedPassword,
+    p_full_name: fullName?.trim() || null,
+    p_email: normalizedEmail || null,
+  });
 
   if (error) {
+    if (error.message.includes("row-level security")) {
+      throw new Error(
+        [
+          "[supabase] No tienes permisos para crear usuarios en la tabla app_users.",
+          "Ejecuta nuevamente docs/migracion-completa.sql en tu proyecto de Supabase para instalar",
+          "la función admin_create_app_user y sus permisos.",
+        ].join(" "),
+      );
+    }
+
     throw new Error(`[supabase] ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("[supabase] La respuesta al crear el usuario llegó vacía.");
   }
 
   return mapAppUserRow(data);
