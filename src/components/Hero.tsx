@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Globe } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface HeroProps {
   content: {
@@ -21,36 +21,8 @@ export const Hero = ({ content, onPrimaryAction }: HeroProps) => {
       <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse delay-1000" />
 
-      {/* Brand marks floating through the hero */}
-      <img
-        src="/branding/globalworking-horizontal-color.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute -left-8 top-16 hidden w-48 opacity-60 drop-shadow-2xl sm:block lg:-left-16 lg:w-56"
-        loading="lazy"
-      />
-      <img
-        src="/branding/redgw-color.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-4 right-4 hidden w-36 opacity-70 drop-shadow-xl sm:block lg:-bottom-10 lg:right-10"
-        loading="lazy"
-      />
-      <img
-        src="/branding/globalworking-stacked-white.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute top-10 right-1/2 hidden w-32 translate-x-1/2 opacity-40 drop-shadow-xl sm:block lg:w-36"
-        loading="lazy"
-      />
-
       <div className="relative max-w-5xl mx-auto text-center z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 bg-card border border-border rounded-full shadow-sm">
-          <Globe className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium text-muted-foreground">Remote Work Revolution</span>
-        </div>
-        
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
+        <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-tight">
           {content.title}
         </h1>
         
