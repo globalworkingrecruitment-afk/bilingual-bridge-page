@@ -83,6 +83,7 @@ El panel interno necesita un usuario con permisos de administrador, pero **no es
 ## 8. Despliegue en Vercel
 
 - Asegúrate de que el proyecto de Vercel tenga las mismas variables de entorno configuradas.
+- En Supabase abre **Authentication → URL Configuration** y añade el dominio público de Vercel en `Site URL` (por ejemplo `https://<tu-app>.vercel.app`) y en `Additional Redirect URLs`. Esto evita bloqueos por CORS al autenticar al usuario de servicio desde producción.
 - Vuelve a desplegar (`Redeploy`) o realiza un nuevo commit para que Vercel construya la aplicación con las credenciales actualizadas.
 
 Con estos pasos la aplicación quedará conectada a Supabase tanto en local como en Vercel.

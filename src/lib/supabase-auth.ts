@@ -29,6 +29,16 @@ const signInServiceUser = async () => {
   const { error } = await supabase.auth.signInWithPassword(credentials);
 
   if (error) {
+    if (error.message === "Failed to fetch") {
+      throw new Error(
+        [
+          "[supabase] No se pudo contactar con Supabase.",
+          "Verifica que la URL del proyecto y la anon key sean correctas,",
+          "y que el dominio del despliegue esté incluido en Authentication → URL Configuration.",
+        ].join(" "),
+      );
+    }
+
     throw new Error(`[supabase] No se pudo iniciar sesión: ${error.message}`);
   }
 };
