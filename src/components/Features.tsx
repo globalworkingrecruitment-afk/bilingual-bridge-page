@@ -31,12 +31,12 @@ export const Features = ({ content }: FeaturesProps) => {
           {content.items.map((item, index) => {
             const Icon = icons[index];
             return (
-              <Card 
+              <Card
                 key={index}
                 className="border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-card group"
               >
-                <CardHeader>
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary-glow rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <CardHeader className="items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary-glow rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 mx-auto">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <CardTitle className="text-xl">{item.title}</CardTitle>
