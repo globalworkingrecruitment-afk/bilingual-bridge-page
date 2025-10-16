@@ -24,13 +24,20 @@ export const norwegianContent = {
     title: "Tilgjengelige Fagfolk",
     subtitle: "Finn den perfekte helsepersonell til teamet ditt",
     noResults: "Ingen kandidater funnet",
+    loading: "Laster inn kandidater...",
+    loadError: {
+      title: "Kunne ikke laste kandidatlisten",
+      description: "Kontroller Supabase-legitimasjonen og prøv igjen.",
+      retry: "Prøv igjen",
+    },
+    refreshing: "Oppdaterer data...",
     filters: {
-      title: "Utforsk",
+      title: "Status",
       all: "Alle profiler",
       groups: {
-        domicilio_geriatrico: "Hjemme- og geriatrisk pleie",
-        hospitalario: "Sykehusomsorg",
-        urgencias: "Akutt- og beredskapstjenester",
+        activo: "Aktiv",
+        inactivo: "Inaktiv",
+        reservado: "Reservert",
       },
     }
   },
@@ -48,7 +55,11 @@ export const norwegianContent = {
     coverLetterFull: "Komplett søknadsbrev",
     openDetails: "Se hele profilen",
     detailDescription: "Les kandidatens utdanning og komplette søknadsbrev.",
-    noExperience: "Ingen registrert medisinsk erfaring ennå",
+    noExperience: "Ingen erfaring oppgitt ennå",
+    noEducation: "Ingen utdanningsdetaljer tilgjengelig",
+    noSummary: "Ingen sammendrag tilgjengelig",
+    noCoverLetter: "Ingen søknadstekst tilgjengelig",
+    noLanguages: "Ingen språk oppgitt",
     scheduleMeeting: "Planlegg møte",
   },
   auth: {

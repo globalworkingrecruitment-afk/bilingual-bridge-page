@@ -1,20 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { CareSetting } from "@/types/candidate";
 
 interface ExperienceSection {
-  id: CareSetting;
+  id: string;
   label: string;
   count: number;
 }
 
 interface ExperienceFiltersProps {
   sections: ExperienceSection[];
-  selectedSection: CareSetting | null;
-  onSelect: (section: CareSetting | null) => void;
+  selectedSection: string | null;
+  onSelect: (section: string | null) => void;
   labels: {
     title: string;
     all: string;
-    groups: Record<CareSetting, string>;
+    groups: Record<string, string>;
   };
 }
 

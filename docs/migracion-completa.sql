@@ -5,20 +5,6 @@
 -- Extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Tipos enumerados reutilizados por varias tablas
-DO $$
-BEGIN
-  CREATE TYPE public.care_setting AS ENUM (
-    'domicilio_geriatrico',
-    'hospitalario',
-    'urgencias'
-  );
-EXCEPTION
-  WHEN duplicate_object THEN
-    NULL;
-END;
-$$;
-
 DO $$
 BEGIN
   CREATE TYPE public.user_role AS ENUM ('admin', 'user');
@@ -27,6 +13,77 @@ EXCEPTION
     NULL;
 END;
 $$;
+
+-- Helper to identify administrator accounts inside RLS policies
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  claims jsonb := auth.jwt();
+  has_admin_role boolean := false;
+BEGIN
+  IF claims IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  IF claims ? 'role' AND claims->>'role' = 'admin' THEN
+    RETURN TRUE;
+  END IF;
+
+  IF claims ? 'user_role' AND claims->>'user_role' = 'admin' THEN
+    RETURN TRUE;
+  END IF;
+
+  IF claims ? 'app_metadata' THEN
+    IF claims->'app_metadata' ? 'role' AND claims->'app_metadata'->>'role' = 'admin' THEN
+      RETURN TRUE;
+    END IF;
+
+    IF claims->'app_metadata' ? 'user_role' AND claims->'app_metadata'->>'user_role' = 'admin' THEN
+      RETURN TRUE;
+    END IF;
+
+    IF claims->'app_metadata' ? 'roles' AND jsonb_typeof(claims->'app_metadata'->'roles') = 'array' THEN
+      SELECT TRUE
+        INTO has_admin_role
+      FROM jsonb_array_elements_text(claims->'app_metadata'->'roles') AS role(value)
+      WHERE value = 'admin'
+      LIMIT 1;
+
+      IF has_admin_role THEN
+        RETURN TRUE;
+      END IF;
+    END IF;
+  END IF;
+
+  IF claims ? 'user_metadata' THEN
+    IF claims->'user_metadata' ? 'role' AND claims->'user_metadata'->>'role' = 'admin' THEN
+      RETURN TRUE;
+    END IF;
+
+    IF claims->'user_metadata' ? 'roles' AND jsonb_typeof(claims->'user_metadata'->'roles') = 'array' THEN
+      SELECT TRUE
+        INTO has_admin_role
+      FROM jsonb_array_elements_text(claims->'user_metadata'->'roles') AS role(value)
+      WHERE value = 'admin'
+      LIMIT 1;
+
+      IF has_admin_role THEN
+        RETURN TRUE;
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN FALSE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
 -- Función genérica para mantener updated_at sincronizado
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
@@ -37,87 +94,84 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- Tabla principal de candidatos con metadatos bilingües
-CREATE TABLE IF NOT EXISTS public.candidates (
+-- Información bilingüe y metadatos de candidatos
+DROP TABLE IF EXISTS public.candidate_data CASCADE;
+
+CREATE TABLE public.candidate_data (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  full_name TEXT NOT NULL,
-  profession TEXT NOT NULL,
-  experience TEXT NOT NULL,
-  languages TEXT NOT NULL,
-  cover_letter_summary TEXT NOT NULL,
-  cover_letter_full TEXT NOT NULL,
-  education TEXT NOT NULL,
-  birth_date DATE NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  photo_url TEXT,
-  primary_care_setting public.care_setting NOT NULL,
-  experience_detail JSONB NOT NULL,
-  profile_en JSONB NOT NULL,
-  profile_no JSONB NOT NULL,
+  nombre TEXT NOT NULL,
+  experiencia_medica_en TEXT,
+  experiencia_medica_no TEXT,
+  experiencia_no_medica_en TEXT,
+  experiencia_no_medica_no TEXT,
+  formacion_en TEXT,
+  formacion_no TEXT,
+  profesion_en TEXT,
+  profesion_no TEXT,
+  idiomas_en TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  idiomas_no TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  carta_resumen_en TEXT,
+  carta_en TEXT,
+  carta_resumen_no TEXT,
+  carta_no TEXT,
+  estado TEXT NOT NULL DEFAULT 'activo',
+  anio_nacimiento SMALLINT NOT NULL,
+  correo TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT candidates_primary_care_setting_matches_detail CHECK (
-    experience_detail ? 'care_setting'
-    AND (experience_detail->>'care_setting')::public.care_setting = primary_care_setting
-  ),
-  CONSTRAINT candidates_experience_detail_is_object CHECK (
-    jsonb_typeof(experience_detail) = 'object'
-    AND experience_detail ? 'title'
-    AND experience_detail ? 'duration'
-  ),
-  CONSTRAINT candidates_experience_detail_titles_are_objects CHECK (
-    NOT (experience_detail ? 'titles')
-    OR jsonb_typeof(experience_detail->'titles') = 'object'
-  ),
-  CONSTRAINT candidates_experience_detail_durations_are_objects CHECK (
-    NOT (experience_detail ? 'durations')
-    OR jsonb_typeof(experience_detail->'durations') = 'object'
-  ),
-  CONSTRAINT candidates_profile_en_is_object CHECK (
-    jsonb_typeof(profile_en) = 'object'
-    AND profile_en ? 'profession'
-    AND profile_en ? 'experience'
-    AND profile_en ? 'languages'
-    AND profile_en ? 'cover_letter_summary'
-    AND profile_en ? 'cover_letter_full'
-    AND profile_en ? 'education'
-  ),
-  CONSTRAINT candidates_profile_no_is_object CHECK (
-    jsonb_typeof(profile_no) = 'object'
-    AND profile_no ? 'profession'
-    AND profile_no ? 'experience'
-    AND profile_no ? 'languages'
-    AND profile_no ? 'cover_letter_summary'
-    AND profile_no ? 'cover_letter_full'
-    AND profile_no ? 'education'
+  CONSTRAINT candidate_data_correo_email_chk CHECK (position('@' in correo) > 1),
+  CONSTRAINT candidate_data_birth_year_chk CHECK (
+    anio_nacimiento BETWEEN 1900 AND EXTRACT(YEAR FROM now())::INT
   )
 );
 
-ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
+CREATE TRIGGER trg_candidate_data_updated_at
+BEFORE UPDATE ON public.candidate_data
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE POLICY IF NOT EXISTS "Public can read candidates"
-ON public.candidates
+CREATE INDEX idx_candidate_data_nombre
+  ON public.candidate_data (nombre);
+CREATE INDEX idx_candidate_data_estado
+  ON public.candidate_data (estado);
+CREATE INDEX idx_candidate_data_anio
+  ON public.candidate_data (anio_nacimiento);
+
+ALTER TABLE public.candidate_data ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS candidate_data_select_auth ON public.candidate_data;
+DROP POLICY IF EXISTS candidate_data_insert_auth ON public.candidate_data;
+DROP POLICY IF EXISTS candidate_data_update_auth ON public.candidate_data;
+DROP POLICY IF EXISTS candidate_data_delete_auth ON public.candidate_data;
+
+CREATE POLICY candidate_data_select_auth
+ON public.candidate_data
 FOR SELECT
+TO authenticated
 USING (true);
 
-CREATE POLICY IF NOT EXISTS "Authenticated can manage candidates"
-ON public.candidates
-FOR ALL
+CREATE POLICY candidate_data_insert_auth
+ON public.candidate_data
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+CREATE POLICY candidate_data_update_auth
+ON public.candidate_data
+FOR UPDATE
 TO authenticated
 USING (true)
 WITH CHECK (true);
 
-CREATE OR REPLACE TRIGGER update_candidates_updated_at
-BEFORE UPDATE ON public.candidates
-FOR EACH ROW
-EXECUTE FUNCTION public.update_updated_at_column();
+CREATE POLICY candidate_data_delete_auth
+ON public.candidate_data
+FOR DELETE
+TO authenticated
+USING (true);
 
-CREATE INDEX IF NOT EXISTS candidates_primary_care_setting_idx
-  ON public.candidates(primary_care_setting);
-
-CREATE INDEX IF NOT EXISTS candidates_created_at_idx
-  ON public.candidates(created_at DESC);
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.candidate_data TO authenticated;
+REVOKE ALL ON public.candidate_data FROM PUBLIC, anon;
 
 -- Usuarios administrados desde el panel de control
 CREATE TABLE IF NOT EXISTS public.app_users (
@@ -171,7 +225,7 @@ USING (true);
 CREATE TABLE IF NOT EXISTS public.candidate_view_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employer_username TEXT NOT NULL,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_id UUID NOT NULL REFERENCES public.candidate_data(id) ON DELETE CASCADE,
   candidate_name TEXT NOT NULL,
   viewed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -199,7 +253,7 @@ CREATE TABLE IF NOT EXISTS public.schedule_requests (
   employer_username TEXT NOT NULL,
   employer_email TEXT NOT NULL,
   employer_name TEXT,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_id UUID NOT NULL REFERENCES public.candidate_data(id) ON DELETE CASCADE,
   candidate_name TEXT NOT NULL,
   candidate_email TEXT NOT NULL,
   availability TEXT NOT NULL,

@@ -1,15 +1,9 @@
-import {
-  Candidate,
-  CandidateLocale,
-  CandidateLocalizedProfile,
-  CareSetting,
-} from "@/types/candidate";
-import { getExperienceDuration, getExperienceTitle, isCandidateLocale } from "@/lib/candidates";
+import { Candidate, CandidateLocale } from "@/types/candidate";
+import { getCandidateProfile } from "@/lib/candidates";
 
 interface SearchCriteria {
   rawQuery: string;
   keywords: string[];
-  requiredCareSettings: CareSetting[];
   ageLessThan?: number;
   ageGreaterThan?: number;
 }
@@ -64,21 +58,6 @@ const ignoredKeywords = new Set([
   "formación",
 ]);
 
-const experienceKeywords: Array<{ keywords: string[]; setting: CareSetting }> = [
-  {
-    keywords: ["hospital", "hospitalaria", "hospitalario", "hospitales"],
-    setting: "hospitalario",
-  },
-  {
-    keywords: ["urgencia", "urgencias", "emergencia", "emergency"],
-    setting: "urgencias",
-  },
-  {
-    keywords: ["domicilio", "residencia", "geriatr", "home care"],
-    setting: "domicilio_geriatrico",
-  },
-];
-
 const normalizeText = (text: string) =>
   text
     .toLowerCase()
@@ -90,7 +69,6 @@ export const parseSearchQuery = (query: string): SearchCriteria => {
   const criteria: SearchCriteria = {
     rawQuery: normalizedQuery,
     keywords: [],
-    requiredCareSettings: [],
   };
 
   if (!normalizedQuery.trim()) {
@@ -110,17 +88,6 @@ export const parseSearchQuery = (query: string): SearchCriteria => {
     criteria.ageGreaterThan = Number(ageGreaterMatch[1]);
     processedQuery = processedQuery.replace(ageGreaterMatch[0], " ");
   }
-
-  experienceKeywords.forEach(({ keywords, setting }) => {
-    if (keywords.some(keyword => processedQuery.includes(keyword))) {
-      if (!criteria.requiredCareSettings.includes(setting)) {
-        criteria.requiredCareSettings.push(setting);
-      }
-      keywords.forEach(keyword => {
-        processedQuery = processedQuery.replaceAll(keyword, " ");
-      });
-    }
-  });
 
   const tokens = processedQuery
     .split(/[^a-záéíóúüñ0-9]+/)
@@ -154,30 +121,11 @@ export const candidateMatchesCriteria = (
   candidate: Candidate,
   criteria: SearchCriteria,
 ): boolean => {
-  const {
-    keywords,
-    requiredCareSettings,
-    ageGreaterThan,
-    ageLessThan,
-  } = criteria;
+  const { keywords, ageGreaterThan, ageLessThan } = criteria;
 
-  if (requiredCareSettings.length > 0) {
-    const candidateSetting = candidate.experienceDetail?.care_setting;
-    const hasAllRequiredExperiences =
-      typeof candidateSetting === "string" &&
-      requiredCareSettings.every(setting => setting === candidateSetting);
-
-    if (!hasAllRequiredExperiences) {
-      return false;
-    }
-  }
-
-  const birthDate = candidate.birth_date ? new Date(candidate.birth_date) : null;
-  const birthTime = birthDate?.getTime();
-  const candidateAge =
-    birthTime !== undefined && !Number.isNaN(birthTime)
-      ? new Date().getFullYear() - birthDate!.getFullYear()
-      : null;
+  const birthYear = typeof candidate.anio_nacimiento === "number" ? candidate.anio_nacimiento : null;
+  const currentYear = new Date().getFullYear();
+  const candidateAge = birthYear ? currentYear - birthYear : null;
 
   if (typeof ageLessThan === "number" && candidateAge !== null) {
     if (!(candidateAge < ageLessThan)) {
@@ -197,52 +145,53 @@ export const candidateMatchesCriteria = (
 
   const localizedChunks: string[] = [];
 
-  const localeProfiles: Record<CandidateLocale, CandidateLocalizedProfile> = {
-    en: candidate.profile_en,
-    no: candidate.profile_no,
-  };
+  const locales: CandidateLocale[] = ["en", "no"];
 
-  for (const [localeKey, profile] of Object.entries(localeProfiles)) {
-    if (!isCandidateLocale(localeKey)) {
-      continue;
-    }
-
-    const typedLocale = localeKey as CandidateLocale;
+  locales.forEach(locale => {
+    const profile = getCandidateProfile(candidate, locale);
+    const languagesText = profile.languages.join(" ");
 
     localizedChunks.push(
       profile.profession,
-      profile.languages,
-      profile.education,
+      languagesText,
+      profile.education ?? "",
       profile.experience,
-      profile.cover_letter_summary,
-      profile.cover_letter_full,
+      profile.cover_letter_summary ?? "",
+      profile.cover_letter_full ?? "",
+      profile.medical_experience ?? "",
+      profile.non_medical_experience ?? "",
     );
-
-    if (candidate.experienceDetail) {
-      localizedChunks.push(
-        getExperienceTitle(candidate.experienceDetail, typedLocale),
-        getExperienceDuration(candidate.experienceDetail, typedLocale),
-      );
-    }
-  }
+  });
 
   const fallbackProfile = getCandidateProfile(candidate, "en");
+  const fallbackLanguages = fallbackProfile.languages.join(" ");
 
   const searchableText = normalizeText(
     [
-      candidate.full_name,
+      candidate.nombre,
+      candidate.profesion_en ?? "",
+      candidate.profesion_no ?? "",
+      candidate.experiencia_medica_en ?? "",
+      candidate.experiencia_medica_no ?? "",
+      candidate.experiencia_no_medica_en ?? "",
+      candidate.experiencia_no_medica_no ?? "",
+      candidate.formacion_en ?? "",
+      candidate.formacion_no ?? "",
+      candidate.carta_resumen_en ?? "",
+      candidate.carta_resumen_no ?? "",
+      candidate.carta_en ?? "",
+      candidate.carta_no ?? "",
+      candidate.estado ?? "",
       fallbackProfile.profession,
-      fallbackProfile.languages,
-      fallbackProfile.education,
-      fallbackProfile.cover_letter_summary,
-      fallbackProfile.cover_letter_full,
+      fallbackLanguages,
+      fallbackProfile.education ?? "",
+      fallbackProfile.cover_letter_summary ?? "",
+      fallbackProfile.cover_letter_full ?? "",
       fallbackProfile.experience,
-      candidate.experienceDetail
-        ? `${candidate.experienceDetail.title} ${candidate.experienceDetail.duration}`
-        : "",
+      fallbackProfile.medical_experience ?? "",
+      fallbackProfile.non_medical_experience ?? "",
       ...localizedChunks,
     ]
-      .flat()
       .join(" "),
   );
 

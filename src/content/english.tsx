@@ -24,13 +24,20 @@ export const englishContent = {
     title: "Available Professionals",
     subtitle: "Find the perfect healthcare professional for your team",
     noResults: "No candidates found",
+    loading: "Loading candidates...",
+    loadError: {
+      title: "We couldn't load the candidate list",
+      description: "Review your Supabase credentials and try again.",
+      retry: "Try again",
+    },
+    refreshing: "Refreshing data...",
     filters: {
-      title: "Browse",
+      title: "Status",
       all: "All profiles",
       groups: {
-        domicilio_geriatrico: "Home & Geriatric Care",
-        hospitalario: "Hospital Care",
-        urgencias: "Emergency & Critical Care",
+        activo: "Active",
+        inactivo: "Inactive",
+        reservado: "Reserved",
       },
     }
   },
@@ -48,7 +55,11 @@ export const englishContent = {
     coverLetterFull: "Complete cover letter",
     openDetails: "View full profile",
     detailDescription: "Review the candidate's education and full cover letter.",
-    noExperience: "No recorded medical experience yet",
+    noExperience: "No experience provided yet",
+    noEducation: "No education details provided",
+    noSummary: "No summary available",
+    noCoverLetter: "No cover letter available",
+    noLanguages: "No languages specified",
     scheduleMeeting: "Schedule meeting",
   },
   auth: {

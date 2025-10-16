@@ -7,6 +7,7 @@ import {
   getStoredSession,
 } from "@/lib/localDb";
 import { SessionUser } from "@/types/auth";
+import { signOutSupabaseSession } from "@/lib/supabase-auth";
 
 interface AuthContextValue {
   currentUser: SessionUser | null;
@@ -80,6 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setCurrentUser(null);
     persistSession(null);
+    void signOutSupabaseSession();
   };
 
   const value = useMemo<AuthContextValue>(() => ({ currentUser, loading, login, logout }), [currentUser, loading]);
