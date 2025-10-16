@@ -246,6 +246,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_app_user: {
+        Args: {
+          p_username: string
+          p_password: string
+          p_full_name?: string | null
+          p_email?: string | null
+        }
+        Returns: Database["public"]["Tables"]["app_users"]["Row"]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

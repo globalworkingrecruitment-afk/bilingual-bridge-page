@@ -95,6 +95,9 @@ VITE_SUPABASE_SERVICE_EMAIL="globalworkingrecruitment@gmail.com"
 VITE_SUPABASE_SERVICE_PASSWORD="contraseña-segura"
 ```
 
+> 💡 Asegúrate de copiar la URL completa tal y como la entrega Supabase. Si falta la "o" final (`supabase.c`) u otro carácter, la app
+> no podrá resolver el dominio y verás errores `net::ERR_NAME_NOT_RESOLVED` al iniciar sesión.
+
 5. Arranca la aplicación con `npm run dev`. Al iniciar sesión en la app web se establecerá automáticamente la sesión de Supabase usando el usuario de servicio y se cargarán los registros de `candidate_data`.
 6. Si necesitas acceder al panel `/admin`, añade también `VITE_ADMIN_USERNAME` y `VITE_ADMIN_PASSWORD` en `.env.local`. No hace falta crear un rol especial en Supabase: estas credenciales solo viven en la app y se utilizan para el inicio de sesión del panel.
 

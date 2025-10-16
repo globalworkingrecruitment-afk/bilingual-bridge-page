@@ -19,6 +19,15 @@ export const getSupabaseClientConfig = () => {
     throw new Error("[config] VITE_SUPABASE_URL must be a valid HTTPS URL.");
   }
 
+  const hostname = new URL(url).hostname;
+  const tld = hostname.split(".").pop();
+
+  if (!tld || tld.length < 2) {
+    throw new Error(
+      "[config] VITE_SUPABASE_URL parece tener un dominio inválido. Verifica que coincida con el formato https://<tu-proyecto>.supabase.co",
+    );
+  }
+
   return { url, key };
 };
 

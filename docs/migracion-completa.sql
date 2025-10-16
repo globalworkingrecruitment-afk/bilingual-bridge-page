@@ -199,6 +199,45 @@ BEFORE UPDATE ON public.app_users
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Permitir que el panel use una función segura para crear usuarios sin exponer la service key
+CREATE OR REPLACE FUNCTION public.admin_create_app_user(
+  p_username TEXT,
+  p_password TEXT,
+  p_full_name TEXT DEFAULT NULL,
+  p_email TEXT DEFAULT NULL
+)
+RETURNS public.app_users
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  new_user public.app_users;
+BEGIN
+  INSERT INTO public.app_users AS au (
+    username,
+    password,
+    full_name,
+    email
+  )
+  VALUES (
+    trim(p_username),
+    trim(p_password),
+    NULLIF(trim(coalesce(p_full_name, '')),''),
+    NULLIF(trim(coalesce(p_email, '')),'')
+  )
+  RETURNING au.* INTO new_user;
+
+  RETURN new_user;
+END;
+$$;
+
+COMMENT ON FUNCTION public.admin_create_app_user(TEXT, TEXT, TEXT, TEXT)
+  IS 'Creates an app user on behalf of the admin dashboard without exposing the service key in the client.';
+
+REVOKE ALL ON FUNCTION public.admin_create_app_user(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_create_app_user(TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
 -- Registro de accesos a la plataforma
 CREATE TABLE IF NOT EXISTS public.access_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

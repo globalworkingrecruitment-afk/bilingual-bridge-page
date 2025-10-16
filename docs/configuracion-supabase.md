@@ -27,7 +27,7 @@ Esta guía describe paso a paso cómo conectar la aplicación desplegada en Verc
 
 ## 3. Verificar los permisos
 
-Las políticas RLS incluidas en la migración ya permiten las operaciones de lectura y escritura para el rol `authenticated`. No es necesario modificar los permisos por defecto del usuario creado.
+Las políticas RLS incluidas en la migración ya permiten las operaciones de lectura y escritura para el rol `authenticated`. Además, la función `admin_create_app_user` creada por la migración permite insertar usuarios desde el panel incluso si posteriormente ajustas las políticas. Si actualizaste el repositorio recientemente, vuelve a ejecutar el script SQL para asegurarte de que la función existe en tu proyecto.
 
 ## 4. Obtener las credenciales del proyecto
 
