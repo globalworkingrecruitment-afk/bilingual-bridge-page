@@ -24,6 +24,14 @@ const ADMIN_PASSWORD = (env.VITE_ADMIN_PASSWORD ?? "123").trim();
 
 const normalizeIdentifier = (value: string) => value.trim().toLowerCase();
 
+const logAccessSafely = async (user: SessionUser) => {
+  try {
+    await addAccessLog(user.username, user.role);
+  } catch (error) {
+    console.warn("[auth] No se pudo registrar el acceso en Supabase.", error);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const adminUser: SessionUser = { username: ADMIN_USERNAME, role: "admin" };
       setCurrentUser(adminUser);
       persistSession(adminUser);
-      await addAccessLog(adminUser.username, adminUser.role);
+      await logAccessSafely(adminUser);
       return adminUser;
     }
 
@@ -90,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const sessionUser: SessionUser = { username: matchedUser.username, role: "user" };
     setCurrentUser(sessionUser);
     persistSession(sessionUser);
-    await addAccessLog(sessionUser.username, sessionUser.role);
+    await logAccessSafely(sessionUser);
 
     return sessionUser;
   };
