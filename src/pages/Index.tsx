@@ -192,13 +192,13 @@ const Index = () => {
           <img
             src="/branding/globalworking-horizontal-color.svg"
             alt="Global Working"
-            className="h-12 w-auto max-h-12 max-w-full object-contain"
+            className="h-12 w-auto object-contain md:h-16"
           />
           <span className="hidden h-10 w-px bg-border md:block" aria-hidden="true" />
           <img
             src="/branding/redgw-color.svg"
             alt="RedGW"
-            className="h-10 w-auto max-h-10 max-w-full object-contain"
+            className="h-10 w-auto object-contain md:h-14"
           />
         </div>
         <div className="flex justify-start md:justify-end">
