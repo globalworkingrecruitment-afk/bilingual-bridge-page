@@ -92,6 +92,19 @@ const AdminDashboard = () => {
     [candidateViews],
   );
 
+  const accessLogsByUser = useMemo(() => {
+    return logs.reduce<Record<string, AccessLog[]>>((accumulator, log) => {
+      const key = log.username.trim().toLowerCase();
+
+      if (!accumulator[key]) {
+        accumulator[key] = [];
+      }
+
+      accumulator[key].push(log);
+      return accumulator;
+    }, {});
+  }, [logs]);
+
   const meetingRequestsByUser = useMemo(() => {
     return meetingRequests.reduce<Record<string, ScheduleRequestLog[]>>((accumulator, request) => {
       const key = request.employerUsername.trim().toLowerCase();
@@ -121,13 +134,33 @@ const AdminDashboard = () => {
     [searchLogs],
   );
 
+  const getAccessesForUser = useCallback(
+    (username: string): AccessLog[] => {
+      const key = username.trim().toLowerCase();
+      return accessLogsByUser[key] ?? [];
+    },
+    [accessLogsByUser],
+  );
+
+  const getLastAccessForUser = useCallback(
+    (username: string): string | null => {
+      const [latest] = getAccessesForUser(username);
+      return latest?.loggedAt ?? null;
+    },
+    [getAccessesForUser],
+  );
+
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsCreatingUser(true);
 
     try {
       const createdUser = await addUser(newUserUsername, newUserPassword, newUserName, newUserEmail);
-      setUsers((previous) => [...previous, createdUser]);
+      setUsers((previous) =>
+        [...previous, createdUser].sort(
+          (a, b) => new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf(),
+        ),
+      );
       toast({
         title: "Usuario creado correctamente",
         description: `${createdUser.username} ahora puede iniciar sesión en la plataforma.`,
@@ -319,6 +352,7 @@ const AdminDashboard = () => {
                     <TableHead>Solicitudes de reunión</TableHead>
                     <TableHead>Búsquedas registradas</TableHead>
                     <TableHead>Creado</TableHead>
+                    <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -327,6 +361,8 @@ const AdminDashboard = () => {
                     const views = getViewsForUser(user.username);
                     const requests = getRequestsForUser(user.username);
                     const searches = getSearchesForUser(user.username);
+                    const accesses = getAccessesForUser(user.username);
+                    const lastAccess = getLastAccessForUser(user.username);
 
                     return (
                       <Fragment key={user.id}>
@@ -377,6 +413,15 @@ const AdminDashboard = () => {
                           )}
                         </TableCell>
                         <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {lastAccess ? (
+                            <span className="text-sm font-medium text-foreground">
+                              {new Date(lastAccess).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Sin accesos</span>
+                          )}
+                        </TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="sm" onClick={() => handleToggleUser(user.id)}>
                               {user.isActive ? "Deshabilitar" : "Habilitar"}
@@ -385,8 +430,8 @@ const AdminDashboard = () => {
                         </TableRow>
                         {hoveredUserId === user.id && (
                           <TableRow className="bg-slate-50/70">
-                            <TableCell colSpan={9} className="p-6">
-                              <div className="grid gap-6 md:grid-cols-3">
+                            <TableCell colSpan={10} className="p-6">
+                              <div className="grid gap-6 md:grid-cols-4">
                                 <div>
                                   <div className="flex items-center justify-between">
                                     <p className="text-sm font-semibold text-foreground">Candidatos vistos</p>
@@ -479,6 +524,30 @@ const AdminDashboard = () => {
                                               Sin coincidencias registradas
                                             </span>
                                           )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold text-foreground">Accesos</p>
+                                    {accesses.length > 0 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        Último acceso {new Date(accesses[0].loggedAt).toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {accesses.length === 0 ? (
+                                    <p className="mt-2 text-sm text-muted-foreground">Sin accesos registrados.</p>
+                                  ) : (
+                                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                      {accesses.map((access) => (
+                                        <li key={access.id} className="flex items-center justify-between gap-2">
+                                          <span className="font-medium text-foreground capitalize">{access.role}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(access.loggedAt).toLocaleString()}
+                                          </span>
                                         </li>
                                       ))}
                                     </ul>

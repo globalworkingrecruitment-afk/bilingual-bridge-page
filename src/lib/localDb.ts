@@ -47,6 +47,11 @@ const sanitizeIlikeValue = (value: string) =>
     .replace(/,/g, " ")
     .trim();
 
+const sortByDesc = <T>(items: T[], getDate: (item: T) => string): T[] =>
+  [...items].sort(
+    (a, b) => new Date(getDate(b)).valueOf() - new Date(getDate(a)).valueOf(),
+  );
+
 const mapAppUserRow = (row: AppUserRow): AppUser => ({
   id: row.id,
   username: row.username,
@@ -132,7 +137,8 @@ export const getUsers = async (): Promise<AppUser[]> => {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return (data ?? []).map(mapAppUserRow);
+  const mapped = (data ?? []).map(mapAppUserRow);
+  return sortByDesc(mapped, (user) => user.createdAt);
 };
 
 const getUserByIdentifierInternal = async (identifier: string): Promise<AppUserRow | null> => {
@@ -335,7 +341,8 @@ export const getAccessLogs = async (): Promise<AccessLog[]> => {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return (data ?? []).map(mapAccessLogRow);
+  const mapped = (data ?? []).map(mapAccessLogRow);
+  return sortByDesc(mapped, (log) => log.loggedAt);
 };
 
 export const addAccessLog = async (username: string, role: UserRole): Promise<AccessLog> => {
@@ -363,13 +370,14 @@ export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return (data ?? []).map(mapCandidateViewRow);
+  const mapped = (data ?? []).map(mapCandidateViewRow);
+  return sortByDesc(mapped, (view) => view.viewedAt);
 };
 
 export const getCandidateViewsByUser = async (): Promise<Record<string, CandidateViewLog[]>> => {
   const views = await getCandidateViews();
 
-  return views.reduce<Record<string, CandidateViewLog[]>>((accumulator, view) => {
+  const grouped = views.reduce<Record<string, CandidateViewLog[]>>((accumulator, view) => {
     const key = view.employerUsername.trim().toLowerCase();
 
     if (!accumulator[key]) {
@@ -379,6 +387,13 @@ export const getCandidateViewsByUser = async (): Promise<Record<string, Candidat
     accumulator[key].push(view);
     return accumulator;
   }, {});
+
+  return Object.fromEntries(
+    Object.entries(grouped).map(([key, entries]) => [
+      key,
+      sortByDesc(entries, (entry) => entry.viewedAt),
+    ]),
+  );
 };
 
 export const recordCandidateView = async (
@@ -454,7 +469,8 @@ export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return (data ?? []).map(mapScheduleRequestRow);
+  const mapped = (data ?? []).map(mapScheduleRequestRow);
+  return sortByDesc(mapped, (request) => request.requestedAt);
 };
 
 export const recordScheduleRequest = async (params: {
@@ -516,13 +532,14 @@ export const getSearchLogs = async (): Promise<SearchLog[]> => {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return (data ?? []).map(mapSearchLogRow);
+  const mapped = (data ?? []).map(mapSearchLogRow);
+  return sortByDesc(mapped, (log) => log.searchedAt);
 };
 
 export const getSearchLogsByUser = async (): Promise<Record<string, SearchLog[]>> => {
   const logs = await getSearchLogs();
 
-  return logs.reduce<Record<string, SearchLog[]>>((accumulator, log) => {
+  const grouped = logs.reduce<Record<string, SearchLog[]>>((accumulator, log) => {
     const key = log.employerUsername.trim().toLowerCase();
 
     if (!accumulator[key]) {
@@ -532,6 +549,13 @@ export const getSearchLogsByUser = async (): Promise<Record<string, SearchLog[]>
     accumulator[key].push(log);
     return accumulator;
   }, {});
+
+  return Object.fromEntries(
+    Object.entries(grouped).map(([key, entries]) => [
+      key,
+      sortByDesc(entries, (entry) => entry.searchedAt),
+    ]),
+  );
 };
 
 export const recordSearchQuery = async (
