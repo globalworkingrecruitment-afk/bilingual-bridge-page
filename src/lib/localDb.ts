@@ -551,15 +551,11 @@ export const recordSearchQuery = async (
 
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("employer_search_logs")
-    .insert({
-      employer_username: normalizedUsername,
-      query: normalizedQuery,
-      candidate_names: normalizedCandidates,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("log_employer_search", {
+    p_employer_username: normalizedUsername,
+    p_query: normalizedQuery,
+    p_candidate_names: normalizedCandidates,
+  });
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
