@@ -170,7 +170,7 @@ const Index = () => {
           />
           <span className="hidden h-10 w-px bg-border md:block" aria-hidden="true" />
           <img
-            src="/branding/redgw-color.svg"
+            src="/branding/red.png"
             alt="RedGW"
             className="h-8 w-auto max-w-[180px] object-contain md:h-12"
           />

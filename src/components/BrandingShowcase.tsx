@@ -22,14 +22,14 @@ const logos = [
     label: "LogoGrande — Horizontal",
   },
   {
-    src: "/branding/redgw-color.svg",
-    alt: "RedGW color logo",
-    label: "RedGW — Color",
+    src: "/branding/red.png",
+    alt: "RedGW primary logo",
+    label: "RedGW — Primary",
   },
   {
-    src: "/branding/redgw-white.svg",
-    alt: "RedGW white logo",
-    label: "RedGW — White",
+    src: "/branding/red.png",
+    alt: "RedGW primary logo",
+    label: "RedGW — Primary (Transparent)",
   },
 ];
 

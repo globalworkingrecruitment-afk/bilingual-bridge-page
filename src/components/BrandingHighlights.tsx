@@ -12,9 +12,9 @@ const colorLogos = [
     label: "Global Working Stacked",
   },
   {
-    src: "/branding/redgw-color.svg",
-    alt: "RedGW color logo",
-    label: "RedGW Color",
+    src: "/branding/red.png",
+    alt: "RedGW primary logo",
+    label: "RedGW Primary",
   },
 ];
 
@@ -30,9 +30,9 @@ const monochromeLogos = [
     label: "Global Working White",
   },
   {
-    src: "/branding/redgw-white.svg",
-    alt: "RedGW white logo",
-    label: "RedGW White",
+    src: "/branding/red.png",
+    alt: "RedGW primary logo",
+    label: "RedGW Primary",
   },
 ];
 
