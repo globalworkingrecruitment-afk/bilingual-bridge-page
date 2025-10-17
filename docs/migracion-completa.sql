@@ -2,8 +2,7 @@
 -- Ejecuta este script en una base de datos vacía para obtener la estructura final
 -- utilizada por la aplicación Bilingual Bridge.
 
--- Extensiones necesarias
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 DO $$
 BEGIN

@@ -243,7 +243,7 @@ export const addUser = async (
       throw new Error(
         [
           "[supabase] La extensión pgcrypto no está instalada en tu base de datos.",
-          "Abre el SQL Editor de Supabase y ejecuta: CREATE EXTENSION IF NOT EXISTS pgcrypto;",
+          "Abre el SQL Editor de Supabase y ejecuta: CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;",
           "Después vuelve a intentar crear el usuario.",
         ].join(" "),
       );

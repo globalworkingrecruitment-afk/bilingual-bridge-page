@@ -1,9 +1,11 @@
--- Reset previous objects (use with caution in production migrations)
 DROP TRIGGER IF EXISTS update_candidates_updated_at ON public.candidates;
 DROP FUNCTION IF EXISTS public.update_updated_at_column;
 DROP TABLE IF EXISTS public.candidate_experiences;
 DROP TABLE IF EXISTS public.candidates;
 DROP TYPE IF EXISTS public.care_setting;
+
+-- Ensure cryptographic helpers like gen_random_uuid are available before creating tables
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Core candidates table
 CREATE TABLE public.candidates (

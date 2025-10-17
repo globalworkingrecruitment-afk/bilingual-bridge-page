@@ -15,7 +15,7 @@ Esta guía describe paso a paso cómo conectar la aplicación desplegada en Verc
 3. Copia el contenido del archivo [`docs/migracion-completa.sql`](./migracion-completa.sql) del repositorio.
 4. Pega el SQL en el editor y pulsa **Run** para crear la tabla `public.candidate_data`, los triggers y las políticas RLS necesarias.
 
-> ❗ Si al crear usuarios ves el error `function gen_salt(unknown) does not exist`, significa que la extensión `pgcrypto` no se instaló. Ejecuta en el SQL Editor el comando `CREATE EXTENSION IF NOT EXISTS pgcrypto;` y vuelve a intentar.
+> ❗ Si al crear usuarios ves el error `function gen_salt(unknown) does not exist`, significa que la extensión `pgcrypto` no se instaló. Ejecuta en el SQL Editor el comando `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;` y vuelve a intentar. Después comprueba que `select gen_random_uuid();` devuelve un valor para asegurarte de que quedó habilitada.
 
 > 💡 Si prefieres usar la CLI de Supabase, ejecuta `supabase login`, `supabase link --project-ref <tu-ref>` y finalmente `supabase db push` desde la carpeta raíz del repositorio.
 
