@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { recordSearchQuery } from "@/lib/localDb";
+import { recordSearchQuery, updateSearchLogCandidates } from "@/lib/localDb";
 import { useCandidateData } from "@/hooks/useCandidateData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,6 +25,8 @@ const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [lastSearchLogId, setLastSearchLogId] = useState<string | null>(null);
+  const lastSearchUpdateRef = useRef<string | null>(null);
   const { currentUser, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -51,14 +53,18 @@ const Index = () => {
 
       if (currentUser?.role === "user" && normalizedQuery) {
         try {
-          await recordSearchQuery(currentUser.username, normalizedQuery);
+          const log = await recordSearchQuery(currentUser.username, normalizedQuery);
+          setLastSearchLogId(log?.id ?? null);
         } catch (error) {
+          setLastSearchLogId(null);
           const message =
             error instanceof Error
               ? error.message
               : "No se pudo registrar la búsqueda del empleador.";
           toast({ title: "Error al registrar búsqueda", description: message, variant: "destructive" });
         }
+      } else {
+        setLastSearchLogId(null);
       }
     },
     [currentUser, toast],
@@ -140,6 +146,41 @@ const Index = () => {
   const handleSelectStatus = (status: string | null) => {
     setSelectedStatus(prev => (prev === status ? null : status));
   };
+
+  useEffect(() => {
+    if (!lastSearchLogId) {
+      return;
+    }
+
+    const candidateNames = filteredCandidates
+      .map(candidate => candidate.fullName?.trim())
+      .filter((name): name is string => Boolean(name && name.length > 0));
+
+    const candidateNamesSignature = `${lastSearchLogId}::${candidateNames.join("|")}`;
+
+    if (lastSearchUpdateRef.current === candidateNamesSignature) {
+      return;
+    }
+
+    let isActive = true;
+
+    void (async () => {
+      try {
+        await updateSearchLogCandidates(lastSearchLogId, candidateNames);
+        if (isActive) {
+          lastSearchUpdateRef.current = candidateNamesSignature;
+        }
+      } catch (error) {
+        if (isActive) {
+          console.warn("No se pudo actualizar el registro de búsqueda con los candidatos", error);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [filteredCandidates, lastSearchLogId]);
 
   const handleLogout = async () => {
     await logout();
