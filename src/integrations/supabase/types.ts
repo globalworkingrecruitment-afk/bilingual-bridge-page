@@ -255,6 +255,32 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["app_users"]["Row"]
       }
+      admin_list_access_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["access_logs"]["Row"][]
+      }
+      admin_list_app_users: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["app_users"]["Row"][]
+      }
+      admin_list_candidate_view_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["candidate_view_logs"]["Row"][]
+      }
+      admin_list_employer_search_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"][]
+      }
+      admin_list_schedule_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["schedule_requests"]["Row"][]
+      }
+      admin_toggle_app_user_status: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Database["public"]["Tables"]["app_users"]["Row"]
+      }
       authenticate_app_user: {
         Args: {
           p_identifier: string
