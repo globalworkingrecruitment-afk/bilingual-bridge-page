@@ -20,9 +20,9 @@ const colorLogos = [
 
 const monochromeLogos = [
   {
-    src: "/branding/globalworking-horizontal-white-signature.svg",
-    alt: "Global Working horizontal signature logo in white",
-    label: "Global Working Signature",
+    src: "/branding/LogoGrandeHorizontal.png",
+    alt: "Global Working LogoGrande horizontal logo in color",
+    label: "LogoGrande Horizontal",
   },
   {
     src: "/branding/globalworking-stacked-white.svg",

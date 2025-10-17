@@ -152,7 +152,7 @@ export const candidateMatchesCriteria = (
 
   locales.forEach(locale => {
     const profile = getCandidateProfile(candidate, locale);
-    const languagesText = profile.languages.join(" ");
+    const languagesText = profile.languages ?? "";
 
     localizedChunks.push(
       profile.profession,
@@ -167,7 +167,7 @@ export const candidateMatchesCriteria = (
   });
 
   const fallbackProfile = getCandidateProfile(candidate, "en");
-  const fallbackLanguages = fallbackProfile.languages.join(" ");
+  const fallbackLanguages = fallbackProfile.languages ?? "";
 
   const searchableText = normalizeText(
     [

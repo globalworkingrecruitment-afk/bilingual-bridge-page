@@ -23,15 +23,12 @@ const coerceTextValue = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const coerceStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) {
-    return [];
+const coerceRawTextValue = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
   }
 
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map(item => item.trim())
-    .filter(item => item.length > 0);
+  return value;
 };
 
 interface LocalizedProfileParams {
@@ -57,7 +54,7 @@ const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocaliz
     medicalExperience,
     nonMedicalExperience,
     experience: experienceSections.join("\n\n"),
-    languages: coerceStringArray(params.languages),
+    languages: coerceRawTextValue(params.languages),
     cover_letter_summary: normalizeText(params.summary),
     cover_letter_full: normalizeText(params.coverLetter),
     education: normalizeText(params.education),
@@ -65,6 +62,19 @@ const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocaliz
 };
 
 const mapRowToCandidate = (row: CandidateRow): Candidate => {
+  const birthYear = (() => {
+    if (typeof row.anio_nacimiento === "number" && Number.isFinite(row.anio_nacimiento)) {
+      return row.anio_nacimiento;
+    }
+
+    if (typeof row.anio_nacimiento === "string") {
+      const parsed = Number(row.anio_nacimiento);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  })();
+
   const profileEn = buildLocalizedProfile({
     profession: row.profesion_en,
     medicalExperience: row.experiencia_medica_en,
@@ -90,7 +100,7 @@ const mapRowToCandidate = (row: CandidateRow): Candidate => {
     fullName: row.nombre,
     email: row.correo,
     status: row.estado,
-    birthYear: typeof row.anio_nacimiento === "number" ? row.anio_nacimiento : Number(row.anio_nacimiento),
+    birthYear,
     profile: {
       en: profileEn,
       no: profileNo,

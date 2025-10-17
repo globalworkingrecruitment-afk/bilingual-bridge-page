@@ -47,6 +47,7 @@ export const englishContent = {
   },
   candidateCard: {
     profession: "Role",
+    age: "Age",
     languages: "Languages",
     education: "Education",
     summary: "Cover letter summary",
@@ -60,6 +61,7 @@ export const englishContent = {
     noSummary: "No summary available",
     noCoverLetter: "No cover letter available",
     noLanguages: "No languages specified",
+    ageUnavailable: "Age not available",
     scheduleMeeting: "Schedule meeting",
   },
   auth: {
