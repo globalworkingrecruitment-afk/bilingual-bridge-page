@@ -14,30 +14,93 @@ const normalizeText = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const coerceStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) {
-    return [];
+const sanitizeListEntry = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
   }
 
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map(item => item.trim())
-    .filter(Boolean);
+  const withoutPrefix = trimmed.replace(/^[-•*]+\s*/, "").trim();
+  return withoutPrefix.length > 0 ? withoutPrefix : null;
+};
+
+const parseListLikeValue = (value: unknown): string[] => {
+  const items: string[] = [];
+
+  const visit = (input: unknown) => {
+    if (Array.isArray(input)) {
+      input.forEach(visit);
+      return;
+    }
+
+    if (typeof input !== "string") {
+      return;
+    }
+
+    const trimmed = input.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          visit(parsed);
+          return;
+        }
+      } catch (error) {
+        /* noop */
+      }
+    }
+
+    const normalized = trimmed.replace(/\r\n/g, "\n");
+    const segments = normalized.split(/[\n;,•]+/);
+
+    segments.forEach(segment => {
+      const sanitized = sanitizeListEntry(segment);
+      if (sanitized) {
+        items.push(sanitized);
+      }
+    });
+  };
+
+  visit(value);
+
+  return Array.from(new Set(items));
+};
+
+const formatListText = (value: unknown): string | null => {
+  if (value == null) {
+    return null;
+  }
+
+  const listItems = parseListLikeValue(value);
+
+  if (listItems.length === 0) {
+    return normalizeText(value);
+  }
+
+  if (listItems.length === 1) {
+    return listItems[0];
+  }
+
+  return listItems.map(item => `• ${item}`).join("\n");
 };
 
 interface LocalizedProfileParams {
-  profession: string | null;
-  medicalExperience: string | null;
-  nonMedicalExperience: string | null;
-  languages: string[];
-  education: string | null;
-  summary: string | null;
-  coverLetter: string | null;
+  profession: unknown;
+  medicalExperience: unknown;
+  nonMedicalExperience: unknown;
+  languages: unknown;
+  education: unknown;
+  summary: unknown;
+  coverLetter: unknown;
 }
 
 const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocalizedProfile => {
-  const medicalExperience = normalizeText(params.medicalExperience);
-  const nonMedicalExperience = normalizeText(params.nonMedicalExperience);
+  const medicalExperience = formatListText(params.medicalExperience);
+  const nonMedicalExperience = formatListText(params.nonMedicalExperience);
 
   const experienceSections = [medicalExperience, nonMedicalExperience].filter(
     (section): section is string => typeof section === "string" && section.length > 0,
@@ -48,7 +111,7 @@ const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocaliz
     medicalExperience,
     nonMedicalExperience,
     experience: experienceSections.join("\n\n"),
-    languages: params.languages,
+    languages: parseListLikeValue(params.languages),
     cover_letter_summary: normalizeText(params.summary),
     cover_letter_full: normalizeText(params.coverLetter),
     education: normalizeText(params.education),
@@ -60,7 +123,7 @@ const mapRowToCandidate = (row: CandidateRow): Candidate => {
     profession: row.profesion_en,
     medicalExperience: row.experiencia_medica_en,
     nonMedicalExperience: row.experiencia_no_medica_en,
-    languages: coerceStringArray(row.idiomas_en),
+    languages: row.idiomas_en,
     education: row.formacion_en,
     summary: row.carta_resumen_en,
     coverLetter: row.carta_en,
@@ -70,7 +133,7 @@ const mapRowToCandidate = (row: CandidateRow): Candidate => {
     profession: row.profesion_no,
     medicalExperience: row.experiencia_medica_no,
     nonMedicalExperience: row.experiencia_no_medica_no,
-    languages: coerceStringArray(row.idiomas_no),
+    languages: row.idiomas_no,
     education: row.formacion_no,
     summary: row.carta_resumen_no,
     coverLetter: row.carta_no,
