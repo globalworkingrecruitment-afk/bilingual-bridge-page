@@ -58,11 +58,13 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
   const profile = getCandidateProfile(candidate, locale);
   const experienceSummary = buildExperienceSummary(profile);
-  const experienceLines = experienceSummary
-    .split(/\r?\n+/)
-    .map(line => line.trim())
-    .map(line => line.replace(/^[:•\-\u2022]+\s*/, ""))
-    .filter(Boolean);
+  const medicalExperience = profile.medicalExperience?.trim() ?? "";
+  const nonMedicalExperience = profile.nonMedicalExperience?.trim() ?? "";
+  const hasMedicalExperience = medicalExperience.length > 0;
+  const hasNonMedicalExperience = nonMedicalExperience.length > 0;
+  const fallbackExperienceText =
+    !hasMedicalExperience && !hasNonMedicalExperience ? experienceSummary.trim() : "";
+  const hasExperience = hasMedicalExperience || hasNonMedicalExperience || fallbackExperienceText.length > 0;
   const languagesLabel = profile.languages.join(", ");
   const educationLabel = profile.education ?? content.candidateCard.noEducation;
   const summaryText = profile.cover_letter_summary ?? content.candidateCard.noSummary;
@@ -363,12 +365,18 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                         {content.candidateCard.experienceOverview}
                       </p>
-                      {experienceLines.length > 0 ? (
-                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                          {experienceLines.map((line, index) => (
-                            <li key={index}>{line}</li>
-                          ))}
-                        </ul>
+                      {hasExperience ? (
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                          {hasMedicalExperience && (
+                            <p className="whitespace-pre-line">{medicalExperience}</p>
+                          )}
+                          {hasNonMedicalExperience && (
+                            <p className="whitespace-pre-line">{nonMedicalExperience}</p>
+                          )}
+                          {fallbackExperienceText && (
+                            <p className="whitespace-pre-line">{fallbackExperienceText}</p>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
                           {content.candidateCard.noExperience}
@@ -418,12 +426,18 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               <Briefcase className="w-4 h-4" />
               <span>{content.candidateCard.experiences}</span>
             </div>
-            {experienceLines.length > 0 ? (
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                {experienceLines.map((line, index) => (
-                  <li key={index}>{line}</li>
-                ))}
-              </ul>
+            {hasExperience ? (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {hasMedicalExperience && (
+                  <p className="whitespace-pre-line">{medicalExperience}</p>
+                )}
+                {hasNonMedicalExperience && (
+                  <p className="whitespace-pre-line">{nonMedicalExperience}</p>
+                )}
+                {fallbackExperienceText && (
+                  <p className="whitespace-pre-line">{fallbackExperienceText}</p>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {content.candidateCard.noExperience}
