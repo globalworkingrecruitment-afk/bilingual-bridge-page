@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Hero } from "@/components/Hero";
 import { Stats } from "@/components/Stats";
@@ -13,12 +13,10 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { getN8nWebhookUrl } from "@/lib/env";
-import { recordSearchQuery, updateSearchLogCandidates } from "@/lib/localDb";
+import { recordSearchQuery } from "@/lib/localDb";
 import { useCandidateData } from "@/hooks/useCandidateData";
 import { useToast } from "@/hooks/use-toast";
 
-const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
 const DEFAULT_STATUS = "activo";
 
 const getCandidateStatus = (candidate: Candidate): string => DEFAULT_STATUS;
@@ -27,8 +25,6 @@ const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [webhookCandidateNames, setWebhookCandidateNames] = useState<string[]>([]);
-  const [n8nWebhook] = useState<string>(() => getN8nWebhookUrl() ?? DEFAULT_WEBHOOK_URL);
   const { currentUser, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -40,7 +36,6 @@ const Index = () => {
     refresh: reloadCandidates,
   } = useCandidateData();
   const candidatesSectionRef = useRef<HTMLElement | null>(null);
-  const lastSearchLogRef = useRef<{ query: string; logId: string | null } | null>(null);
 
   const content = language === "en" ? englishContent : norwegianContent;
 
@@ -49,46 +44,15 @@ const Index = () => {
   };
 
   const handleSearch = useCallback(
-    async (query: string, candidateNames?: string[]) => {
+    async (query: string) => {
       const normalizedQuery = query.trim();
-      const normalizedCandidateNames = candidateNames
-        ? candidateNames.map((name) => name.trim()).filter((name) => name.length > 0)
-        : [];
 
       setSearchQuery(normalizedQuery);
-      setWebhookCandidateNames(normalizedCandidateNames);
 
       if (currentUser?.role === "user" && normalizedQuery) {
         try {
-          if (!candidateNames) {
-            const newLog = await recordSearchQuery(
-              currentUser.username,
-              normalizedQuery,
-              normalizedCandidateNames,
-            );
-            lastSearchLogRef.current = newLog
-              ? { query: normalizedQuery, logId: newLog.id }
-              : { query: normalizedQuery, logId: null };
-          } else {
-            const lastSearch = lastSearchLogRef.current;
-            const matchesLastQuery =
-              lastSearch && lastSearch.query.trim().toLowerCase() === normalizedQuery.toLowerCase();
-
-            if (matchesLastQuery && lastSearch.logId) {
-              await updateSearchLogCandidates(lastSearch.logId, normalizedCandidateNames);
-            } else {
-              const newLog = await recordSearchQuery(
-                currentUser.username,
-                normalizedQuery,
-                normalizedCandidateNames,
-              );
-              lastSearchLogRef.current = newLog
-                ? { query: normalizedQuery, logId: newLog.id }
-                : { query: normalizedQuery, logId: null };
-            }
-          }
+          await recordSearchQuery(currentUser.username, normalizedQuery);
         } catch (error) {
-          lastSearchLogRef.current = null;
           const message =
             error instanceof Error
               ? error.message
@@ -156,11 +120,6 @@ const Index = () => {
 
   const searchCriteria = useMemo(() => parseSearchQuery(searchQuery), [searchQuery]);
 
-  const normalizedWebhookNames = useMemo(
-    () => new Set(webhookCandidateNames.map((name) => name.toLowerCase())),
-    [webhookCandidateNames],
-  );
-
   const filteredCandidates = useMemo(() => {
     if (candidates.length === 0) {
       return [];
@@ -174,19 +133,9 @@ const Index = () => {
         return false;
       }
 
-      if (normalizedWebhookNames.size > 0) {
-        return normalizedWebhookNames.has(candidate.fullName.trim().toLowerCase());
-      }
-
       return candidateMatchesCriteria(candidate, searchCriteria);
     });
-  }, [candidates, searchCriteria, selectedStatus, normalizedWebhookNames]);
-
-  useEffect(() => {
-    if (webhookCandidateNames.length > 0) {
-      candidatesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [webhookCandidateNames]);
+  }, [candidates, searchCriteria, selectedStatus]);
 
   const handleSelectStatus = (status: string | null) => {
     setSelectedStatus(prev => (prev === status ? null : status));
@@ -245,7 +194,6 @@ const Index = () => {
 
           <CandidateSearch
             onSearch={handleSearch}
-            n8nWebhookUrl={n8nWebhook}
             placeholder={content.search.placeholder}
             searchLabel={content.search.button}
           />
