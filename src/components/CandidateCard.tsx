@@ -18,6 +18,7 @@ import type { AppContent } from "@/types/content";
 import { AppUser } from "@/types/auth";
 import {
   Briefcase,
+  Calendar,
   CalendarClock,
   FileText,
   GraduationCap,
@@ -71,12 +72,32 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
     ...(fallbackExperienceText ? [fallbackExperienceText] : []),
   ];
   const hasSummaryExperience = summaryExperienceEntries.length > 0;
-  const languagesLabel = profile.languages.join(", ");
+  const languagesValue = typeof profile.languages === "string" ? profile.languages : "";
   const educationLabel = profile.education ?? content.candidateCard.noEducation;
   const summaryText = profile.cover_letter_summary ?? content.candidateCard.noSummary;
   const coverLetterText =
     profile.cover_letter_full ?? profile.cover_letter_summary ?? content.candidateCard.noCoverLetter;
-  const languagesText = languagesLabel || content.candidateCard.noLanguages;
+  const hasLanguages = languagesValue.trim().length > 0;
+  const languagesText = hasLanguages ? languagesValue : content.candidateCard.noLanguages;
+  const computedAge = (() => {
+    const birthYear =
+      typeof candidate.birthYear === "number" && Number.isFinite(candidate.birthYear)
+        ? candidate.birthYear
+        : null;
+
+    if (birthYear === null) {
+      return null;
+    }
+
+    const age = new Date().getUTCFullYear() - birthYear;
+    if (!Number.isFinite(age)) {
+      return null;
+    }
+
+    return age >= 0 && age <= 120 ? Math.trunc(age) : null;
+  })();
+  const hasAge = typeof computedAge === "number";
+  const ageText = hasAge ? `${computedAge}` : content.candidateCard.ageUnavailable;
 
   useEffect(() => {
     let active = true;
@@ -410,12 +431,22 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
       <CardContent className="space-y-6">
         <div className="flex items-start gap-3">
+          <Calendar className="w-5 h-5 text-primary mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              {content.candidateCard.age}
+            </p>
+            <p className="text-sm text-muted-foreground">{ageText}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3">
           <Languages className="w-5 h-5 text-primary mt-0.5" />
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
               {content.candidateCard.languages}
             </p>
-            <p className="text-sm text-muted-foreground">{languagesText}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-line">{languagesText}</p>
           </div>
         </div>
 

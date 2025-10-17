@@ -47,6 +47,7 @@ export const norwegianContent = {
   },
   candidateCard: {
     profession: "Rolle",
+    age: "Alder",
     languages: "Språk",
     education: "Utdanning",
     summary: "Sammendrag av søknadsbrev",
@@ -60,6 +61,7 @@ export const norwegianContent = {
     noSummary: "Ingen sammendrag tilgjengelig",
     noCoverLetter: "Ingen søknadstekst tilgjengelig",
     noLanguages: "Ingen språk oppgitt",
+    ageUnavailable: "Ingen aldersinformasjon tilgjengelig",
     scheduleMeeting: "Planlegg møte",
   },
   auth: {

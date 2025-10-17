@@ -16,7 +16,7 @@ export interface CandidateLocalizedProfile {
   experience: string;
   medicalExperience?: string | null;
   nonMedicalExperience?: string | null;
-  languages: string[];
+  languages: string | null;
   cover_letter_summary?: string | null;
   cover_letter_full?: string | null;
   education?: string | null;

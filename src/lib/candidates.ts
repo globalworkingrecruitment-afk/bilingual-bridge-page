@@ -8,17 +8,19 @@ const normalizeTextValue = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const coerceLanguages = (value: unknown, fallback: string[] = []): string[] => {
-  if (!Array.isArray(value)) {
-    return fallback;
-  }
+const pickLanguages = (
+  primary: CandidateLocalizedProfile | undefined,
+  fallback: CandidateLocalizedProfile | undefined,
+): string | null => {
+  const getValidLanguages = (profile: CandidateLocalizedProfile | undefined): string | null => {
+    if (!profile) return null;
+    if (typeof profile.languages !== "string") return null;
 
-  const normalized = value
-    .filter((item): item is string => typeof item === "string")
-    .map(item => item.trim())
-    .filter(Boolean);
+    const value = profile.languages;
+    return value.trim().length > 0 ? value : null;
+  };
 
-  return normalized.length > 0 ? normalized : fallback;
+  return getValidLanguages(primary) ?? getValidLanguages(fallback);
 };
 
 const extractExperienceSections = (
@@ -74,7 +76,7 @@ export const getCandidateProfile = (
       normalizeTextValue(localizedProfile?.nonMedicalExperience) ??
       normalizeTextValue(fallbackProfile?.nonMedicalExperience) ??
       null,
-    languages: coerceLanguages(localizedProfile?.languages, coerceLanguages(fallbackProfile?.languages)),
+    languages: pickLanguages(localizedProfile, fallbackProfile),
     cover_letter_summary:
       normalizeTextValue(localizedProfile?.cover_letter_summary) ??
       normalizeTextValue(fallbackProfile?.cover_letter_summary) ??
