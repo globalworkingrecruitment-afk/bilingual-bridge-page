@@ -109,13 +109,13 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
       void (async () => {
         try {
-          await recordCandidateView(currentUser.username, candidate.id, candidate.nombre);
+          await recordCandidateView(currentUser.username, candidate.id, candidate.fullName);
         } catch (error) {
           console.warn("No se pudo registrar la vista del candidato", error);
         }
       })();
     },
-    [candidate.nombre, candidate.id, currentUser],
+    [candidate.fullName, candidate.id, currentUser],
   );
 
   const resetScheduleState = () => {
@@ -241,7 +241,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       return;
     }
 
-    const normalizedCandidateEmail = candidate.correo.trim();
+    const normalizedCandidateEmail = candidate.email.trim();
     const normalizedEmployerName = employerProfile?.fullName?.trim();
 
     const payload = {
@@ -249,7 +249,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       usuarioEmpleador: currentUser.username.trim(),
       nombreEmpleador: normalizedEmployerName ?? currentUser.username.trim(),
       emailCandidato: normalizedCandidateEmail,
-      NombreCandidato: candidate.nombre,
+      NombreCandidato: candidate.fullName,
       disponibilidad: normalizedAvailability,
     };
 
@@ -275,7 +275,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
         employerEmail: normalizedEmployerEmail,
         employerName: employerProfile?.fullName,
         candidateId: candidate.id,
-        candidateName: candidate.nombre,
+        candidateName: candidate.fullName,
         candidateEmail: normalizedCandidateEmail,
         availability: normalizedAvailability,
       });
@@ -299,7 +299,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       <CardHeader className="pb-4 space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
-            <h3 className="text-xl font-bold">{candidate.nombre}</h3>
+            <h3 className="text-xl font-bold">{candidate.fullName}</h3>
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 {content.candidateCard.profession}
@@ -338,7 +338,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{candidate.nombre}</DialogTitle>
+                  <DialogTitle>{candidate.fullName}</DialogTitle>
                   <DialogDescription>{content.candidateCard.detailDescription}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -461,7 +461,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-1 text-sm">
-                  <p className="font-semibold text-foreground">{candidate.nombre}</p>
+                  <p className="font-semibold text-foreground">{candidate.fullName}</p>
                   <p className="text-muted-foreground">{profile.profession}</p>
                 </div>
                 <div className="space-y-2">
@@ -504,7 +504,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Candidato</p>
-                  <p className="text-muted-foreground">{candidate.nombre}</p>
+                  <p className="text-muted-foreground">{candidate.fullName}</p>
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Disponibilidad propuesta</p>

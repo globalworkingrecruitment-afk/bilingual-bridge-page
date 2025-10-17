@@ -1,30 +1,17 @@
--- =========================================================
--- MIGRACIÓN SEGURA - Supabase/PostgreSQL
--- Política general:
---   - candidates: SELECT para authenticated; mutaciones solo admin (JWT role='admin')
---   - logs: inserts para authenticated; lectura admin (o dueño donde aplica)
--- =========================================================
+-- Align database objects with the hardened schema used by the admin dashboard
+set statement_timeout = 0;
+set lock_timeout = 0;
+set idle_in_transaction_session_timeout = 0;
+set client_encoding = 'UTF8';
+set standard_conforming_strings = on;
+set check_function_bodies = off;
+set client_min_messages = warning;
+set row_security = on;
 
------------------------------
--- 0) (OPCIONAL) search_path global
------------------------------
--- ALTER DATABASE postgres SET search_path = '"$user", public, extensions';
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
------------------------------
--- 1) Hardening de permisos
------------------------------
-REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-
------------------------------
--- 2) Extensiones (en esquema "extensions")
------------------------------
-CREATE SCHEMA IF NOT EXISTS extensions;
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
-
------------------------------
--- 3) Tipos ENUM (idempotentes)
------------------------------
+-- Ensure required enums exist
 DO $$
 BEGIN
   CREATE TYPE public.care_setting AS ENUM (
@@ -47,10 +34,7 @@ EXCEPTION WHEN duplicate_object THEN
 END;
 $$;
 
------------------------------
--- 4) Funciones auxiliares
------------------------------
--- 4.1) updated_at auto
+-- Helper functions
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -62,7 +46,6 @@ BEGIN
 END;
 $$;
 
--- 4.2) helper: es_admin() basado en claim del JWT (role='admin')
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -71,7 +54,6 @@ AS $$
   SELECT (auth.jwt() ->> 'role') = 'admin'
 $$;
 
--- 4.3) Hash de password (usa pgcrypto calificada + search_path fijo)
 CREATE OR REPLACE FUNCTION public.hash_password()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -87,10 +69,15 @@ BEGIN
 END;
 $$;
 
------------------------------
--- 5) Tabla: candidates
------------------------------
-CREATE TABLE IF NOT EXISTS public.candidates (
+-- Replace legacy data structures with the new normalized schema
+DROP TABLE IF EXISTS public.candidate_view_logs CASCADE;
+DROP TABLE IF EXISTS public.schedule_requests CASCADE;
+DROP TABLE IF EXISTS public.employer_search_logs CASCADE;
+DROP TABLE IF EXISTS public.access_logs CASCADE;
+DROP TABLE IF EXISTS public.candidate_data CASCADE;
+DROP TABLE IF EXISTS public.candidates CASCADE;
+
+CREATE TABLE public.candidates (
   id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   full_name TEXT NOT NULL,
   profession TEXT NOT NULL,
@@ -148,11 +135,6 @@ CREATE TABLE IF NOT EXISTS public.candidates (
 
 ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "candidates_select_authenticated" ON public.candidates;
-DROP POLICY IF EXISTS "candidates_insert_admin_only"  ON public.candidates;
-DROP POLICY IF EXISTS "candidates_update_admin_only"  ON public.candidates;
-DROP POLICY IF EXISTS "candidates_delete_admin_only"  ON public.candidates;
-
 CREATE POLICY "candidates_select_authenticated"
   ON public.candidates
   FOR SELECT
@@ -178,37 +160,167 @@ CREATE POLICY "candidates_delete_admin_only"
   TO authenticated
   USING (public.is_admin());
 
-DROP TRIGGER IF EXISTS update_candidates_updated_at ON public.candidates;
 CREATE TRIGGER update_candidates_updated_at
 BEFORE UPDATE ON public.candidates
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE INDEX IF NOT EXISTS candidates_primary_care_setting_idx
+CREATE INDEX candidates_primary_care_setting_idx
   ON public.candidates(primary_care_setting);
-CREATE INDEX IF NOT EXISTS candidates_created_at_idx
+CREATE INDEX candidates_created_at_idx
   ON public.candidates(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_candidates_experience_detail_gin
+CREATE INDEX idx_candidates_experience_detail_gin
   ON public.candidates USING GIN (experience_detail);
-CREATE INDEX IF NOT EXISTS idx_candidates_profile_en_gin
+CREATE INDEX idx_candidates_profile_en_gin
   ON public.candidates USING GIN (profile_en);
-CREATE INDEX IF NOT EXISTS idx_candidates_profile_no_gin
+CREATE INDEX idx_candidates_profile_no_gin
   ON public.candidates USING GIN (profile_no);
 
 ALTER TABLE public.candidates
-  ADD COLUMN IF NOT EXISTS search_vector tsvector
+  ADD COLUMN search_vector tsvector
   GENERATED ALWAYS AS (
     setweight(to_tsvector('simple', coalesce(full_name, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(profession, '')), 'B') ||
     setweight(to_tsvector('simple', coalesce(languages, '')), 'C')
   ) STORED;
 
-CREATE INDEX IF NOT EXISTS idx_candidates_search_vector
+CREATE INDEX idx_candidates_search_vector
   ON public.candidates USING GIN (search_vector);
 
------------------------------
--- 6) Tabla: app_users
------------------------------
+-- Logs
+CREATE TABLE public.access_logs (
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  username TEXT NOT NULL,
+  role public.user_role NOT NULL,
+  logged_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.access_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "access_logs_insert_any_auth"
+  ON public.access_logs
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "access_logs_select_admin"
+  ON public.access_logs
+  FOR SELECT
+  TO authenticated
+  USING (public.is_admin());
+
+CREATE INDEX idx_access_logs_user_time
+  ON public.access_logs (username, logged_at DESC);
+
+CREATE TABLE public.candidate_view_logs (
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_username TEXT NOT NULL,
+  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_name TEXT NOT NULL,
+  viewed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.candidate_view_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "cvl_insert_any_auth"
+  ON public.candidate_view_logs
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "cvl_select_admin_or_owner"
+  ON public.candidate_view_logs
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.is_admin()
+    OR employer_username = (auth.jwt() ->> 'email')
+  );
+
+CREATE INDEX candidate_view_logs_candidate_idx
+  ON public.candidate_view_logs(candidate_id, viewed_at DESC);
+CREATE INDEX idx_candidate_view_logs_emp_time
+  ON public.candidate_view_logs (employer_username, viewed_at DESC);
+
+CREATE TABLE public.schedule_requests (
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_username TEXT NOT NULL,
+  employer_email TEXT NOT NULL,
+  employer_name TEXT,
+  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_name TEXT NOT NULL,
+  candidate_email TEXT NOT NULL,
+  availability TEXT NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.schedule_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "sr_insert_any_auth"
+  ON public.schedule_requests
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "sr_select_admin_or_owner"
+  ON public.schedule_requests
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.is_admin()
+    OR employer_username = (auth.jwt() ->> 'email')
+    OR employer_email = (auth.jwt() ->> 'email')
+  );
+
+CREATE INDEX schedule_requests_candidate_idx
+  ON public.schedule_requests(candidate_id, requested_at DESC);
+CREATE INDEX idx_schedule_requests_emp_time
+  ON public.schedule_requests (employer_username, requested_at DESC);
+
+CREATE TABLE public.employer_search_logs (
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_username TEXT NOT NULL,
+  query TEXT NOT NULL,
+  candidate_names TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  searched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.employer_search_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "esl_insert_owner"
+  ON public.employer_search_logs
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (employer_username = (auth.jwt() ->> 'email'));
+
+CREATE POLICY "esl_update_owner"
+  ON public.employer_search_logs
+  FOR UPDATE
+  TO authenticated
+  USING (employer_username = (auth.jwt() ->> 'email'))
+  WITH CHECK (employer_username = (auth.jwt() ->> 'email'));
+
+CREATE POLICY "esl_select_admin_or_owner"
+  ON public.employer_search_logs
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.is_admin()
+    OR employer_username = (auth.jwt() ->> 'email')
+  );
+
+CREATE TRIGGER update_employer_search_logs_updated_at
+BEFORE UPDATE ON public.employer_search_logs
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE INDEX employer_search_logs_employer_idx
+  ON public.employer_search_logs(employer_username, searched_at DESC);
+CREATE INDEX idx_employer_search_logs_time
+  ON public.employer_search_logs (searched_at DESC);
+
+-- Hardened helpers for app_users management
 CREATE TABLE IF NOT EXISTS public.app_users (
   id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   username TEXT NOT NULL UNIQUE,
@@ -242,163 +354,6 @@ BEFORE INSERT OR UPDATE OF password ON public.app_users
 FOR EACH ROW
 EXECUTE FUNCTION public.hash_password();
 
------------------------------
--- 7) Tabla: access_logs
------------------------------
-CREATE TABLE IF NOT EXISTS public.access_logs (
-  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
-  username TEXT NOT NULL,
-  role public.user_role NOT NULL,
-  logged_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.access_logs ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "access_logs_insert_any_auth" ON public.access_logs;
-CREATE POLICY "access_logs_insert_any_auth"
-  ON public.access_logs
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "access_logs_select_admin" ON public.access_logs;
-CREATE POLICY "access_logs_select_admin"
-  ON public.access_logs
-  FOR SELECT
-  TO authenticated
-  USING (public.is_admin());
-
-CREATE INDEX IF NOT EXISTS idx_access_logs_user_time
-  ON public.access_logs (username, logged_at DESC);
-
------------------------------
--- 8) Tabla: candidate_view_logs
------------------------------
-CREATE TABLE IF NOT EXISTS public.candidate_view_logs (
-  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
-  employer_username TEXT NOT NULL,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
-  candidate_name TEXT NOT NULL,
-  viewed_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.candidate_view_logs ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "cvl_insert_any_auth" ON public.candidate_view_logs;
-CREATE POLICY "cvl_insert_any_auth"
-  ON public.candidate_view_logs
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "cvl_select_admin_or_owner" ON public.candidate_view_logs;
-CREATE POLICY "cvl_select_admin_or_owner"
-  ON public.candidate_view_logs
-  FOR SELECT
-  TO authenticated
-  USING (
-    public.is_admin()
-    OR employer_username = (auth.jwt() ->> 'email')
-  );
-
-CREATE INDEX IF NOT EXISTS candidate_view_logs_candidate_idx
-  ON public.candidate_view_logs(candidate_id, viewed_at DESC);
-CREATE INDEX IF NOT EXISTS idx_candidate_view_logs_emp_time
-  ON public.candidate_view_logs (employer_username, viewed_at DESC);
-
------------------------------
--- 9) Tabla: schedule_requests
------------------------------
-CREATE TABLE IF NOT EXISTS public.schedule_requests (
-  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
-  employer_username TEXT NOT NULL,
-  employer_email TEXT NOT NULL,
-  employer_name TEXT,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
-  candidate_name TEXT NOT NULL,
-  candidate_email TEXT NOT NULL,
-  availability TEXT NOT NULL,
-  requested_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.schedule_requests ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "sr_insert_any_auth" ON public.schedule_requests;
-CREATE POLICY "sr_insert_any_auth"
-  ON public.schedule_requests
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "sr_select_admin_or_owner" ON public.schedule_requests;
-CREATE POLICY "sr_select_admin_or_owner"
-  ON public.schedule_requests
-  FOR SELECT
-  TO authenticated
-  USING (
-    public.is_admin()
-    OR employer_username = (auth.jwt() ->> 'email')
-    OR employer_email = (auth.jwt() ->> 'email')
-  );
-
-CREATE INDEX IF NOT EXISTS schedule_requests_candidate_idx
-  ON public.schedule_requests(candidate_id, requested_at DESC);
-CREATE INDEX IF NOT EXISTS idx_schedule_requests_emp_time
-  ON public.schedule_requests (employer_username, requested_at DESC);
-
------------------------------
--- 10) Tabla: employer_search_logs
------------------------------
-CREATE TABLE IF NOT EXISTS public.employer_search_logs (
-  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
-  employer_username TEXT NOT NULL,
-  query TEXT NOT NULL,
-  candidate_names TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-  searched_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.employer_search_logs ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "esl_insert_owner" ON public.employer_search_logs;
-CREATE POLICY "esl_insert_owner"
-  ON public.employer_search_logs
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (employer_username = (auth.jwt() ->> 'email'));
-
-DROP POLICY IF EXISTS "esl_update_owner" ON public.employer_search_logs;
-CREATE POLICY "esl_update_owner"
-  ON public.employer_search_logs
-  FOR UPDATE
-  TO authenticated
-  USING (employer_username = (auth.jwt() ->> 'email'))
-  WITH CHECK (employer_username = (auth.jwt() ->> 'email'));
-
-DROP POLICY IF EXISTS "esl_select_admin_or_owner" ON public.employer_search_logs;
-CREATE POLICY "esl_select_admin_or_owner"
-  ON public.employer_search_logs
-  FOR SELECT
-  TO authenticated
-  USING (
-    public.is_admin()
-    OR employer_username = (auth.jwt() ->> 'email')
-  );
-
-DROP TRIGGER IF EXISTS update_employer_search_logs_updated_at ON public.employer_search_logs;
-CREATE TRIGGER update_employer_search_logs_updated_at
-BEFORE UPDATE ON public.employer_search_logs
-FOR EACH ROW
-EXECUTE FUNCTION public.update_updated_at_column();
-
-CREATE INDEX IF NOT EXISTS employer_search_logs_employer_idx
-  ON public.employer_search_logs(employer_username, searched_at DESC);
-CREATE INDEX IF NOT EXISTS idx_employer_search_logs_time
-  ON public.employer_search_logs (searched_at DESC);
-
------------------------------
--- 11) Funciones para gestión de app_users
------------------------------
 CREATE OR REPLACE FUNCTION public.admin_create_app_user(
   p_username text,
   p_password text,
@@ -492,12 +447,5 @@ COMMENT ON FUNCTION public.authenticate_app_user(text, text)
 REVOKE ALL ON FUNCTION public.authenticate_app_user(text, text) FROM public;
 GRANT EXECUTE ON FUNCTION public.authenticate_app_user(text, text) TO authenticated;
 
------------------------------
--- 12) Grants finales (claridad)
------------------------------
 GRANT SELECT ON public.candidates TO authenticated;
 REVOKE SELECT ON public.candidates FROM PUBLIC, anon;
-
--- =========================================================
--- FIN MIGRACIÓN
--- =========================================================

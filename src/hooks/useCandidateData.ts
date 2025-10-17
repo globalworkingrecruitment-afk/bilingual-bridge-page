@@ -1,44 +1,102 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Candidate } from "@/types/candidate";
+import type { Candidate, CandidateCareSetting, CandidateLocalizedProfile } from "@/types/candidate";
 import type { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureSupabaseSession } from "@/lib/supabase-auth";
 
-type CandidateRow = Database["public"]["Tables"]["candidate_data"]["Row"];
+type CandidateRow = Database["public"]["Tables"]["candidates"]["Row"];
 
 type CandidateFetchState = "idle" | "loading" | "loaded" | "error";
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const coerceStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map(item => item.trim())
+    .filter(Boolean);
 };
 
-const mapRowToCandidate = (row: CandidateRow): Candidate => ({
-  id: row.id,
-  nombre: row.nombre,
-  experiencia_medica_en: row.experiencia_medica_en ?? null,
-  experiencia_medica_no: row.experiencia_medica_no ?? null,
-  experiencia_no_medica_en: row.experiencia_no_medica_en ?? null,
-  experiencia_no_medica_no: row.experiencia_no_medica_no ?? null,
-  formacion_en: row.formacion_en ?? null,
-  formacion_no: row.formacion_no ?? null,
-  profesion_en: row.profesion_en ?? null,
-  profesion_no: row.profesion_no ?? null,
-  idiomas_en: coerceStringArray(row.idiomas_en),
-  idiomas_no: coerceStringArray(row.idiomas_no),
-  carta_resumen_en: row.carta_resumen_en ?? null,
-  carta_en: row.carta_en ?? null,
-  carta_resumen_no: row.carta_resumen_no ?? null,
-  carta_no: row.carta_no ?? null,
-  estado: row.estado ?? "activo",
-  anio_nacimiento: row.anio_nacimiento,
-  correo: row.correo,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-});
+const coerceLocalizedProfile = (value: unknown): CandidateLocalizedProfile => {
+  if (!isRecord(value)) {
+    return {
+      profession: "",
+      experience: "",
+      languages: [],
+      cover_letter_summary: null,
+      cover_letter_full: null,
+      education: null,
+    };
+  }
+
+  return {
+    profession: typeof value.profession === "string" ? value.profession : "",
+    experience: typeof value.experience === "string" ? value.experience : "",
+    languages: coerceStringArray(value.languages),
+    cover_letter_summary:
+      typeof value.cover_letter_summary === "string" ? value.cover_letter_summary : null,
+    cover_letter_full: typeof value.cover_letter_full === "string" ? value.cover_letter_full : null,
+    education: typeof value.education === "string" ? value.education : null,
+  };
+};
+
+const coerceCareSetting = (value: unknown, fallback: CandidateCareSetting): CandidateCareSetting => {
+  const candidateCareSetting = String(value ?? "") as CandidateCareSetting;
+
+  const allowed: CandidateCareSetting[] = ["domicilio", "domicilio_geriatrico", "hospitalario", "urgencias"];
+
+  return allowed.includes(candidateCareSetting) ? candidateCareSetting : fallback;
+};
+
+const mapRowToCandidate = (row: CandidateRow): Candidate => {
+  const detailRecord = isRecord(row.experience_detail) ? { ...row.experience_detail } : {};
+  const careSetting = coerceCareSetting(detailRecord.care_setting, row.primary_care_setting);
+
+  const experienceDetail: Candidate["experienceDetail"] = {
+    care_setting: careSetting,
+    title: typeof detailRecord.title === "string" ? detailRecord.title : "",
+    duration: typeof detailRecord.duration === "string" ? detailRecord.duration : "",
+  };
+
+  if (isRecord(detailRecord.titles)) {
+    experienceDetail.titles = Object.fromEntries(
+      Object.entries(detailRecord.titles).filter(([, value]) => typeof value === "string"),
+    ) as Record<string, string>;
+  }
+
+  if (isRecord(detailRecord.durations)) {
+    experienceDetail.durations = Object.fromEntries(
+      Object.entries(detailRecord.durations).filter(([, value]) => typeof value === "string"),
+    ) as Record<string, string>;
+  }
+
+  Object.entries(detailRecord).forEach(([key, value]) => {
+    if (key in experienceDetail) return;
+    (experienceDetail as Record<string, unknown>)[key] = value;
+  });
+
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone,
+    birthDate: row.birth_date,
+    photoUrl: row.photo_url ?? null,
+    primaryCareSetting: row.primary_care_setting,
+    experienceDetail,
+    profile: {
+      en: coerceLocalizedProfile(row.profile_en),
+      no: coerceLocalizedProfile(row.profile_no),
+    },
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
 export const useCandidateData = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -53,9 +111,9 @@ export const useCandidateData = () => {
       await ensureSupabaseSession();
 
       const { data, error: supabaseError } = await supabase
-        .from("candidate_data")
+        .from("candidates")
         .select("*")
-        .order("nombre", { ascending: true });
+        .order("full_name", { ascending: true });
 
       if (supabaseError) {
         throw new Error(`[supabase] ${supabaseError.message}`);

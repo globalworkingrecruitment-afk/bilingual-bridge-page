@@ -169,8 +169,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/auth", { replace: true });
   };
 

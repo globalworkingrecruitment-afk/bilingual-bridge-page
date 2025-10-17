@@ -68,74 +68,65 @@ export type Database = {
         }
         Relationships: []
       }
-      candidate_data: {
+      candidates: {
         Row: {
-          anio_nacimiento: number
-          carta_en: string | null
-          carta_no: string | null
-          carta_resumen_en: string | null
-          carta_resumen_no: string | null
+          birth_date: string
+          cover_letter_full: string
+          cover_letter_summary: string
           created_at: string
-          correo: string
-          estado: string
-          experiencia_medica_en: string | null
-          experiencia_medica_no: string | null
-          experiencia_no_medica_en: string | null
-          experiencia_no_medica_no: string | null
-          formacion_en: string | null
-          formacion_no: string | null
+          education: string
+          email: string
+          experience: string
+          experience_detail: Json
+          full_name: string
           id: string
-          idiomas_en: string[]
-          idiomas_no: string[]
-          nombre: string
-          profesion_en: string | null
-          profesion_no: string | null
+          languages: string
+          phone: string
+          photo_url: string | null
+          primary_care_setting: Database["public"]["Enums"]["care_setting"]
+          profile_en: Json
+          profile_no: Json
+          profession: string
           updated_at: string
         }
         Insert: {
-          anio_nacimiento: number
-          carta_en?: string | null
-          carta_no?: string | null
-          carta_resumen_en?: string | null
-          carta_resumen_no?: string | null
+          birth_date: string
+          cover_letter_full: string
+          cover_letter_summary: string
           created_at?: string
-          correo: string
-          estado?: string
-          experiencia_medica_en?: string | null
-          experiencia_medica_no?: string | null
-          experiencia_no_medica_en?: string | null
-          experiencia_no_medica_no?: string | null
-          formacion_en?: string | null
-          formacion_no?: string | null
+          education: string
+          email: string
+          experience: string
+          experience_detail: Json
+          full_name: string
           id?: string
-          idiomas_en?: string[]
-          idiomas_no?: string[]
-          nombre: string
-          profesion_en?: string | null
-          profesion_no?: string | null
+          languages: string
+          phone: string
+          photo_url?: string | null
+          primary_care_setting: Database["public"]["Enums"]["care_setting"]
+          profile_en: Json
+          profile_no: Json
+          profession: string
           updated_at?: string
         }
         Update: {
-          anio_nacimiento?: number
-          carta_en?: string | null
-          carta_no?: string | null
-          carta_resumen_en?: string | null
-          carta_resumen_no?: string | null
+          birth_date?: string
+          cover_letter_full?: string
+          cover_letter_summary?: string
           created_at?: string
-          correo?: string
-          estado?: string
-          experiencia_medica_en?: string | null
-          experiencia_medica_no?: string | null
-          experiencia_no_medica_en?: string | null
-          experiencia_no_medica_no?: string | null
-          formacion_en?: string | null
-          formacion_no?: string | null
+          education?: string
+          email?: string
+          experience?: string
+          experience_detail?: Json
+          full_name?: string
           id?: string
-          idiomas_en?: string[]
-          idiomas_no?: string[]
-          nombre?: string
-          profesion_en?: string | null
-          profesion_no?: string | null
+          languages?: string
+          phone?: string
+          photo_url?: string | null
+          primary_care_setting?: Database["public"]["Enums"]["care_setting"]
+          profile_en?: Json
+          profile_no?: Json
+          profession?: string
           updated_at?: string
         }
         Relationships: []
@@ -166,7 +157,7 @@ export type Database = {
           {
             foreignKeyName: "candidate_view_logs_candidate_id_fkey"
             columns: ["candidate_id"]
-            referencedRelation: "candidate_data"
+            referencedRelation: "candidates"
             referencedColumns: ["id"]
           }
         ]
@@ -236,7 +227,7 @@ export type Database = {
           {
             foreignKeyName: "schedule_requests_candidate_id_fkey"
             columns: ["candidate_id"]
-            referencedRelation: "candidate_data"
+            referencedRelation: "candidates"
             referencedColumns: ["id"]
           }
         ]
@@ -255,12 +246,20 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["app_users"]["Row"]
       }
+      authenticate_app_user: {
+        Args: {
+          p_identifier: string
+          p_password: string
+        }
+        Returns: Database["public"]["Tables"]["app_users"]["Row"]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
     Enums: {
+      care_setting: "domicilio" | "domicilio_geriatrico" | "hospitalario" | "urgencias"
       user_role: "admin" | "user"
     }
     CompositeTypes: {

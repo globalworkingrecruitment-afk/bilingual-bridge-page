@@ -123,8 +123,9 @@ export const candidateMatchesCriteria = (
 ): boolean => {
   const { keywords, ageGreaterThan, ageLessThan } = criteria;
 
-  const birthYear = typeof candidate.anio_nacimiento === "number" ? candidate.anio_nacimiento : null;
-  const currentYear = new Date().getFullYear();
+  const birthDate = candidate.birthDate ? new Date(candidate.birthDate) : null;
+  const birthYear = birthDate && !Number.isNaN(birthDate.valueOf()) ? birthDate.getUTCFullYear() : null;
+  const currentYear = new Date().getUTCFullYear();
   const candidateAge = birthYear ? currentYear - birthYear : null;
 
   if (typeof ageLessThan === "number" && candidateAge !== null) {
@@ -158,8 +159,6 @@ export const candidateMatchesCriteria = (
       profile.experience,
       profile.cover_letter_summary ?? "",
       profile.cover_letter_full ?? "",
-      profile.medical_experience ?? "",
-      profile.non_medical_experience ?? "",
     );
   });
 
@@ -168,28 +167,19 @@ export const candidateMatchesCriteria = (
 
   const searchableText = normalizeText(
     [
-      candidate.nombre,
-      candidate.profesion_en ?? "",
-      candidate.profesion_no ?? "",
-      candidate.experiencia_medica_en ?? "",
-      candidate.experiencia_medica_no ?? "",
-      candidate.experiencia_no_medica_en ?? "",
-      candidate.experiencia_no_medica_no ?? "",
-      candidate.formacion_en ?? "",
-      candidate.formacion_no ?? "",
-      candidate.carta_resumen_en ?? "",
-      candidate.carta_resumen_no ?? "",
-      candidate.carta_en ?? "",
-      candidate.carta_no ?? "",
-      candidate.estado ?? "",
+      candidate.fullName,
       fallbackProfile.profession,
-      fallbackLanguages,
       fallbackProfile.education ?? "",
       fallbackProfile.cover_letter_summary ?? "",
       fallbackProfile.cover_letter_full ?? "",
       fallbackProfile.experience,
-      fallbackProfile.medical_experience ?? "",
-      fallbackProfile.non_medical_experience ?? "",
+      candidate.experienceDetail.title ?? "",
+      candidate.experienceDetail.duration ?? "",
+      Object.values(candidate.experienceDetail.titles ?? {}).join(" "),
+      Object.values(candidate.experienceDetail.durations ?? {}).join(" "),
+      fallbackProfile.profession,
+      fallbackLanguages,
+      fallbackProfile.education ?? "",
       ...localizedChunks,
     ]
       .join(" "),
