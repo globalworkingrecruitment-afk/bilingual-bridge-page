@@ -192,8 +192,8 @@ const Index = () => {
     setSelectedStatus(prev => (prev === status ? null : status));
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/auth", { replace: true });
   };
 

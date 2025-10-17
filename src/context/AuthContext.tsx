@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from "react";
+import { ReactNode, createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import {
   addAccessLog,
   initializeLocalDb,
@@ -13,7 +13,7 @@ interface AuthContextValue {
   currentUser: SessionUser | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<SessionUser>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -64,7 +64,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
+    await initializeLocalDb();
+
     const normalizedUsername = normalizeIdentifier(username);
     const trimmedPassword = password.trim();
 
@@ -101,15 +103,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await logAccessSafely(sessionUser);
 
     return sessionUser;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(async () => {
     setCurrentUser(null);
     persistSession(null);
-    void signOutSupabaseSession();
-  };
 
-  const value = useMemo<AuthContextValue>(() => ({ currentUser, loading, login, logout }), [currentUser, loading]);
+    try {
+      await signOutSupabaseSession();
+    } catch (error) {
+      console.warn("[auth] No se pudo cerrar la sesión de Supabase", error);
+    }
+
+    try {
+      await initializeLocalDb();
+    } catch (error) {
+      console.warn("[auth] No se pudo restablecer la sesión de Supabase", error);
+    }
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ currentUser, loading, login, logout }),
+    [currentUser, loading, login, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
