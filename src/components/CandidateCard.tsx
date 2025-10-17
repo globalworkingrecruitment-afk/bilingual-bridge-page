@@ -61,6 +61,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
   const experienceLines = experienceSummary
     .split(/\r?\n+/)
     .map(line => line.trim())
+    .map(line => line.replace(/^[:•\-\u2022]+\s*/, ""))
     .filter(Boolean);
   const languagesLabel = profile.languages.join(", ");
   const educationLabel = profile.education ?? content.candidateCard.noEducation;
