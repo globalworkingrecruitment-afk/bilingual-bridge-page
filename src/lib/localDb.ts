@@ -221,7 +221,9 @@ export const addUser = async (
   });
 
   if (error) {
-    if (error.message.includes("row-level security")) {
+    const normalizedErrorMessage = error.message.toLowerCase();
+
+    if (normalizedErrorMessage.includes("row-level security")) {
       throw new Error(
         [
           "[supabase] No tienes permisos para crear usuarios en la tabla app_users.",
@@ -231,9 +233,13 @@ export const addUser = async (
       );
     }
 
-    const normalizedMessage = error.message.toLowerCase();
+    const requiresPgCrypto = [
+      "gen_salt",
+      "gen_random_uuid",
+      "pgcrypto",
+    ].some((needle) => normalizedErrorMessage.includes(needle));
 
-    if (normalizedMessage.includes("gen_salt") || normalizedMessage.includes("gen_random_uuid")) {
+    if (requiresPgCrypto) {
       throw new Error(
         [
           "[supabase] La extensión pgcrypto no está instalada en tu base de datos.",
