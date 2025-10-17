@@ -79,9 +79,9 @@ const Auth = () => {
       <Card className="relative z-10 w-full max-w-md border-primary/30 bg-background/90 backdrop-blur-xl shadow-2xl shadow-primary/20">
         <CardHeader className="space-y-4 text-center">
           <img
-            src="/globalworking-logo.svg"
+            src="/branding/globalworking-horizontal-color.svg"
             alt="Global Working"
-            className="mx-auto h-14 w-auto"
+            className="mx-auto h-auto w-full max-w-[12rem] object-contain"
           />
           <CardTitle className="text-3xl font-bold text-foreground">
             {content.auth.title}
