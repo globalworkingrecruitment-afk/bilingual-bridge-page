@@ -164,8 +164,8 @@ const Index = () => {
         </div>
         <div className="flex flex-col items-center gap-3 md:flex-row md:justify-center">
           <img
-            src="/branding/globalworking-horizontal-color.svg"
-            alt="Global Working"
+            src="/branding/LogoGrandeHorizontal.png"
+            alt="Global Working LogoGrande"
             className="h-10 w-auto max-w-[220px] object-contain md:h-14"
           />
           <span className="hidden h-10 w-px bg-border md:block" aria-hidden="true" />

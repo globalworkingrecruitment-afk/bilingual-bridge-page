@@ -2,9 +2,9 @@ import { CandidateLocale } from "@/types/candidate";
 
 const colorLogos = [
   {
-    src: "/branding/globalworking-horizontal-color.svg",
-    alt: "Global Working horizontal logo in color",
-    label: "Global Working Horizontal",
+    src: "/branding/LogoGrandeHorizontal.png",
+    alt: "Global Working LogoGrande horizontal logo in color",
+    label: "LogoGrande Horizontal",
   },
   {
     src: "/branding/globalworking-stacked-color.svg",
