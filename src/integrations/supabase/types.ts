@@ -288,6 +288,14 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["app_users"]["Row"]
       }
+      log_employer_search: {
+        Args: {
+          p_employer_username: string
+          p_query: string
+          p_candidate_names?: string[] | null
+        }
+        Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
