@@ -123,8 +123,10 @@ export const candidateMatchesCriteria = (
 ): boolean => {
   const { keywords, ageGreaterThan, ageLessThan } = criteria;
 
-  const birthDate = candidate.birthDate ? new Date(candidate.birthDate) : null;
-  const birthYear = birthDate && !Number.isNaN(birthDate.valueOf()) ? birthDate.getUTCFullYear() : null;
+  const birthYear =
+    typeof candidate.birthYear === "number" && Number.isFinite(candidate.birthYear)
+      ? candidate.birthYear
+      : null;
   const currentYear = new Date().getUTCFullYear();
   const candidateAge = birthYear ? currentYear - birthYear : null;
 
@@ -157,6 +159,8 @@ export const candidateMatchesCriteria = (
       languagesText,
       profile.education ?? "",
       profile.experience,
+      profile.medicalExperience ?? "",
+      profile.nonMedicalExperience ?? "",
       profile.cover_letter_summary ?? "",
       profile.cover_letter_full ?? "",
     );
@@ -173,12 +177,10 @@ export const candidateMatchesCriteria = (
       fallbackProfile.cover_letter_summary ?? "",
       fallbackProfile.cover_letter_full ?? "",
       fallbackProfile.experience,
-      candidate.experienceDetail.title ?? "",
-      candidate.experienceDetail.duration ?? "",
-      Object.values(candidate.experienceDetail.titles ?? {}).join(" "),
-      Object.values(candidate.experienceDetail.durations ?? {}).join(" "),
-      fallbackProfile.profession,
+      fallbackProfile.medicalExperience ?? "",
+      fallbackProfile.nonMedicalExperience ?? "",
       fallbackLanguages,
+      candidate.status,
       fallbackProfile.education ?? "",
       ...localizedChunks,
     ]

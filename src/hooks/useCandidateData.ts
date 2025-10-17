@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Candidate, CandidateCareSetting, CandidateLocalizedProfile } from "@/types/candidate";
+import type { Candidate, CandidateLocalizedProfile } from "@/types/candidate";
 import type { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureSupabaseSession } from "@/lib/supabase-auth";
 
-type CandidateRow = Database["public"]["Tables"]["candidates"]["Row"];
+type CandidateRow = Database["public"]["Tables"]["candidate_data"]["Row"];
 
 type CandidateFetchState = "idle" | "loading" | "loaded" | "error";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+const normalizeText = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
 
 const coerceStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) {
@@ -22,76 +25,66 @@ const coerceStringArray = (value: unknown): string[] => {
     .filter(Boolean);
 };
 
-const coerceLocalizedProfile = (value: unknown): CandidateLocalizedProfile => {
-  if (!isRecord(value)) {
-    return {
-      profession: "",
-      experience: "",
-      languages: [],
-      cover_letter_summary: null,
-      cover_letter_full: null,
-      education: null,
-    };
-  }
+interface LocalizedProfileParams {
+  profession: string | null;
+  medicalExperience: string | null;
+  nonMedicalExperience: string | null;
+  languages: string[];
+  education: string | null;
+  summary: string | null;
+  coverLetter: string | null;
+}
+
+const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocalizedProfile => {
+  const medicalExperience = normalizeText(params.medicalExperience);
+  const nonMedicalExperience = normalizeText(params.nonMedicalExperience);
+
+  const experienceSections = [medicalExperience, nonMedicalExperience].filter(
+    (section): section is string => typeof section === "string" && section.length > 0,
+  );
 
   return {
-    profession: typeof value.profession === "string" ? value.profession : "",
-    experience: typeof value.experience === "string" ? value.experience : "",
-    languages: coerceStringArray(value.languages),
-    cover_letter_summary:
-      typeof value.cover_letter_summary === "string" ? value.cover_letter_summary : null,
-    cover_letter_full: typeof value.cover_letter_full === "string" ? value.cover_letter_full : null,
-    education: typeof value.education === "string" ? value.education : null,
+    profession: normalizeText(params.profession) ?? "",
+    medicalExperience,
+    nonMedicalExperience,
+    experience: experienceSections.join("\n\n"),
+    languages: params.languages,
+    cover_letter_summary: normalizeText(params.summary),
+    cover_letter_full: normalizeText(params.coverLetter),
+    education: normalizeText(params.education),
   };
-};
-
-const coerceCareSetting = (value: unknown, fallback: CandidateCareSetting): CandidateCareSetting => {
-  const candidateCareSetting = String(value ?? "") as CandidateCareSetting;
-
-  const allowed: CandidateCareSetting[] = ["domicilio", "domicilio_geriatrico", "hospitalario", "urgencias"];
-
-  return allowed.includes(candidateCareSetting) ? candidateCareSetting : fallback;
 };
 
 const mapRowToCandidate = (row: CandidateRow): Candidate => {
-  const detailRecord = isRecord(row.experience_detail) ? { ...row.experience_detail } : {};
-  const careSetting = coerceCareSetting(detailRecord.care_setting, row.primary_care_setting);
+  const profileEn = buildLocalizedProfile({
+    profession: row.profesion_en,
+    medicalExperience: row.experiencia_medica_en,
+    nonMedicalExperience: row.experiencia_no_medica_en,
+    languages: coerceStringArray(row.idiomas_en),
+    education: row.formacion_en,
+    summary: row.carta_resumen_en,
+    coverLetter: row.carta_en,
+  });
 
-  const experienceDetail: Candidate["experienceDetail"] = {
-    care_setting: careSetting,
-    title: typeof detailRecord.title === "string" ? detailRecord.title : "",
-    duration: typeof detailRecord.duration === "string" ? detailRecord.duration : "",
-  };
-
-  if (isRecord(detailRecord.titles)) {
-    experienceDetail.titles = Object.fromEntries(
-      Object.entries(detailRecord.titles).filter(([, value]) => typeof value === "string"),
-    ) as Record<string, string>;
-  }
-
-  if (isRecord(detailRecord.durations)) {
-    experienceDetail.durations = Object.fromEntries(
-      Object.entries(detailRecord.durations).filter(([, value]) => typeof value === "string"),
-    ) as Record<string, string>;
-  }
-
-  Object.entries(detailRecord).forEach(([key, value]) => {
-    if (key in experienceDetail) return;
-    (experienceDetail as Record<string, unknown>)[key] = value;
+  const profileNo = buildLocalizedProfile({
+    profession: row.profesion_no,
+    medicalExperience: row.experiencia_medica_no,
+    nonMedicalExperience: row.experiencia_no_medica_no,
+    languages: coerceStringArray(row.idiomas_no),
+    education: row.formacion_no,
+    summary: row.carta_resumen_no,
+    coverLetter: row.carta_no,
   });
 
   return {
     id: row.id,
-    fullName: row.full_name,
-    email: row.email,
-    phone: row.phone,
-    birthDate: row.birth_date,
-    photoUrl: row.photo_url ?? null,
-    primaryCareSetting: row.primary_care_setting,
-    experienceDetail,
+    fullName: row.nombre,
+    email: row.correo,
+    status: row.estado,
+    birthYear: typeof row.anio_nacimiento === "number" ? row.anio_nacimiento : Number(row.anio_nacimiento),
     profile: {
-      en: coerceLocalizedProfile(row.profile_en),
-      no: coerceLocalizedProfile(row.profile_no),
+      en: profileEn,
+      no: profileNo,
     },
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -111,9 +104,9 @@ export const useCandidateData = () => {
       await ensureSupabaseSession();
 
       const { data, error: supabaseError } = await supabase
-        .from("candidates")
+        .from("candidate_data")
         .select("*")
-        .order("full_name", { ascending: true });
+        .order("nombre", { ascending: true });
 
       if (supabaseError) {
         throw new Error(`[supabase] ${supabaseError.message}`);
