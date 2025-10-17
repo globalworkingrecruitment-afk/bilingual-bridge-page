@@ -14,78 +14,24 @@ const normalizeText = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const sanitizeListEntry = (value: string): string | null => {
+const coerceTextValue = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
   const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  const withoutPrefix = trimmed.replace(/^[-•*]+\s*/, "").trim();
-  return withoutPrefix.length > 0 ? withoutPrefix : null;
+  return trimmed.length > 0 ? trimmed : null;
 };
 
-const parseListLikeValue = (value: unknown): string[] => {
-  const items: string[] = [];
-
-  const visit = (input: unknown) => {
-    if (Array.isArray(input)) {
-      input.forEach(visit);
-      return;
-    }
-
-    if (typeof input !== "string") {
-      return;
-    }
-
-    const trimmed = input.trim();
-    if (trimmed.length === 0) {
-      return;
-    }
-
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          visit(parsed);
-          return;
-        }
-      } catch (error) {
-        /* noop */
-      }
-    }
-
-    const normalized = trimmed.replace(/\r\n/g, "\n");
-    const segments = normalized.split(/[\n;,•]+/);
-
-    segments.forEach(segment => {
-      const sanitized = sanitizeListEntry(segment);
-      if (sanitized) {
-        items.push(sanitized);
-      }
-    });
-  };
-
-  visit(value);
-
-  return Array.from(new Set(items));
-};
-
-const formatListText = (value: unknown): string | null => {
-  if (value == null) {
-    return null;
+const coerceStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  const listItems = parseListLikeValue(value);
-
-  if (listItems.length === 0) {
-    return normalizeText(value);
-  }
-
-  if (listItems.length === 1) {
-    return listItems[0];
-  }
-
-  return listItems.map(item => `• ${item}`).join("\n");
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map(item => item.trim())
+    .filter(item => item.length > 0);
 };
 
 interface LocalizedProfileParams {
@@ -99,8 +45,8 @@ interface LocalizedProfileParams {
 }
 
 const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocalizedProfile => {
-  const medicalExperience = formatListText(params.medicalExperience);
-  const nonMedicalExperience = formatListText(params.nonMedicalExperience);
+  const medicalExperience = coerceTextValue(params.medicalExperience);
+  const nonMedicalExperience = coerceTextValue(params.nonMedicalExperience);
 
   const experienceSections = [medicalExperience, nonMedicalExperience].filter(
     (section): section is string => typeof section === "string" && section.length > 0,
@@ -111,7 +57,7 @@ const buildLocalizedProfile = (params: LocalizedProfileParams): CandidateLocaliz
     medicalExperience,
     nonMedicalExperience,
     experience: experienceSections.join("\n\n"),
-    languages: parseListLikeValue(params.languages),
+    languages: coerceStringArray(params.languages),
     cover_letter_summary: normalizeText(params.summary),
     cover_letter_full: normalizeText(params.coverLetter),
     education: normalizeText(params.education),
