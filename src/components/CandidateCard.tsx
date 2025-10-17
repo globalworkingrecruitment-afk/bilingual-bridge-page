@@ -58,13 +58,16 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
   const profile = getCandidateProfile(candidate, locale);
   const experienceSummary = buildExperienceSummary(profile);
+  const experienceLines = experienceSummary
+    .split(/\r?\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
   const languagesLabel = profile.languages.join(", ");
   const educationLabel = profile.education ?? content.candidateCard.noEducation;
   const summaryText = profile.cover_letter_summary ?? content.candidateCard.noSummary;
   const coverLetterText =
     profile.cover_letter_full ?? profile.cover_letter_summary ?? content.candidateCard.noCoverLetter;
   const languagesText = languagesLabel || content.candidateCard.noLanguages;
-  const experienceText = experienceSummary || content.candidateCard.noExperience;
 
   useEffect(() => {
     let active = true;
@@ -359,9 +362,17 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
                       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                         {content.candidateCard.experienceOverview}
                       </p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line">
-                        {experienceText}
-                      </p>
+                      {experienceLines.length > 0 ? (
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                          {experienceLines.map((line, index) => (
+                            <li key={index}>{line}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {content.candidateCard.noExperience}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -406,9 +417,17 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
               <Briefcase className="w-4 h-4" />
               <span>{content.candidateCard.experiences}</span>
             </div>
-            <p className="text-sm text-muted-foreground whitespace-pre-line">
-              {experienceText}
-            </p>
+            {experienceLines.length > 0 ? (
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                {experienceLines.map((line, index) => (
+                  <li key={index}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {content.candidateCard.noExperience}
+              </p>
+            )}
           </div>
         </div>
 
