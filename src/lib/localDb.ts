@@ -126,10 +126,7 @@ export const persistSession = (session: SessionUser | null) => {
 export const getUsers = async (): Promise<AppUser[]> => {
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .order("created_at", { ascending: true });
+  const { data, error } = await supabase.rpc("admin_list_app_users");
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -279,36 +276,17 @@ export const addUser = async (
 export const toggleUserStatus = async (userId: string): Promise<AppUser | null> => {
   await ensureSupabaseSession();
 
-  const { data: existing, error: existingError } = await supabase
-    .from("app_users")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("admin_toggle_app_user_status", { p_user_id: userId });
 
-  if (existingError) {
-    if (isNoRowsError(existingError)) {
+  if (error) {
+    if (error.message.toLowerCase().includes("null value")) {
       return null;
     }
 
-    throw new Error(`[supabase] ${existingError.message}`);
-  }
-
-  if (!existing) {
-    return null;
-  }
-
-  const { data, error } = await supabase
-    .from("app_users")
-    .update({ is_active: !existing.is_active })
-    .eq("id", userId)
-    .select("*")
-    .single();
-
-  if (error) {
     throw new Error(`[supabase] ${error.message}`);
   }
 
-  return mapAppUserRow(data);
+  return data ? mapAppUserRow(data) : null;
 };
 
 export const updateUserEmail = async (userId: string, email: string): Promise<AppUser | null> => {
@@ -351,10 +329,7 @@ export const removeUser = async (userId: string) => {
 export const getAccessLogs = async (): Promise<AccessLog[]> => {
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("access_logs")
-    .select("*")
-    .order("logged_at", { ascending: false });
+  const { data, error } = await supabase.rpc("admin_list_access_logs");
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -382,10 +357,7 @@ export const addAccessLog = async (username: string, role: UserRole): Promise<Ac
 export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("candidate_view_logs")
-    .select("*")
-    .order("viewed_at", { ascending: false });
+  const { data, error } = await supabase.rpc("admin_list_candidate_view_logs");
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -476,10 +448,7 @@ export const recordCandidateView = async (
 export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("schedule_requests")
-    .select("*")
-    .order("requested_at", { ascending: false });
+  const { data, error } = await supabase.rpc("admin_list_schedule_requests");
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -541,10 +510,7 @@ export const recordScheduleRequest = async (params: {
 export const getSearchLogs = async (): Promise<SearchLog[]> => {
   await ensureSupabaseSession();
 
-  const { data, error } = await supabase
-    .from("employer_search_logs")
-    .select("*")
-    .order("searched_at", { ascending: false });
+  const { data, error } = await supabase.rpc("admin_list_employer_search_logs");
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
