@@ -176,21 +176,38 @@ export const validateUserCredentials = async (
   identifier: string,
   password: string,
 ): Promise<AppUser | null> => {
-  const userRow = await getUserByIdentifierInternal(identifier);
+  const normalizedIdentifier = identifier.trim();
+  const normalizedPassword = password.trim();
 
-  if (!userRow) {
+  if (!normalizedIdentifier || !normalizedPassword) {
     return null;
   }
 
-  if (!userRow.is_active) {
+  await ensureSupabaseSession();
+
+  const { data, error } = await supabase.rpc("authenticate_app_user", {
+    p_identifier: normalizedIdentifier,
+    p_password: normalizedPassword,
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("row-level security")) {
+      throw new Error(
+        [
+          "[supabase] No tienes permisos para autenticar usuarios en la función authenticate_app_user.",
+          "Revisa que docs/migracion-completa.sql se haya ejecutado correctamente en tu proyecto de Supabase.",
+        ].join(" "),
+      );
+    }
+
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  if (!data) {
     return null;
   }
 
-  if (userRow.password !== password.trim()) {
-    return null;
-  }
-
-  return mapAppUserRow(userRow);
+  return mapAppUserRow(data);
 };
 
 export const addUser = async (
@@ -199,9 +216,9 @@ export const addUser = async (
   fullName?: string,
   email?: string,
 ): Promise<AppUser> => {
-  const normalizedUsername = username.trim();
+  const normalizedUsername = username.trim().toLowerCase();
   const normalizedPassword = password.trim();
-  const normalizedEmail = email?.trim();
+  const normalizedEmail = email?.trim().toLowerCase();
 
   if (!normalizedUsername) {
     throw new Error("El nombre de usuario no es válido.");

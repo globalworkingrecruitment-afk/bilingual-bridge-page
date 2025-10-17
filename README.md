@@ -83,7 +83,7 @@ Clona este repositorio y trabaja de forma local.
 
 Para un recorrido detallado puedes consultar [docs/configuracion-supabase.md](./docs/configuracion-supabase.md). El resumen es el siguiente:
 
-1. Ejecuta las migraciones del repositorio en tu proyecto de Supabase para crear la tabla `public.candidate_data`, los triggers y las políticas RLS descritas en `docs/migracion-completa.sql`.
+1. Ejecuta las migraciones del repositorio en tu proyecto de Supabase para crear las tablas y funciones descritas en `docs/migracion-completa.sql`, incluyendo la tabla `public.candidates` y los helpers de autenticación.
 2. En la sección **Authentication > Users** de Supabase crea un usuario de servicio (por ejemplo `globalworkingrecruitment@gmail.com`) con una contraseña segura. Este usuario será el que utilice la aplicación para autenticarse como rol `authenticated`.
 3. En Supabase asigna permisos de lectura/escritura al usuario de servicio (basta con mantener el rol por defecto `authenticated`, las políticas RLS ya permiten todas las operaciones autenticadas).
 4. Crea un archivo `.env.local` en la raíz del proyecto con estas variables:
@@ -98,7 +98,7 @@ VITE_SUPABASE_SERVICE_PASSWORD="contraseña-segura"
 > 💡 Asegúrate de copiar la URL completa tal y como la entrega Supabase. Si falta la "o" final (`supabase.c`) u otro carácter, la app
 > no podrá resolver el dominio y verás errores `net::ERR_NAME_NOT_RESOLVED` al iniciar sesión.
 
-5. Arranca la aplicación con `npm run dev`. Al iniciar sesión en la app web se establecerá automáticamente la sesión de Supabase usando el usuario de servicio y se cargarán los registros de `candidate_data`.
+5. Arranca la aplicación con `npm run dev`. Al iniciar sesión en la app web se establecerá automáticamente la sesión de Supabase usando el usuario de servicio y se cargarán los registros de `candidates`.
 6. Si necesitas acceder al panel `/admin`, añade también `VITE_ADMIN_USERNAME` y `VITE_ADMIN_PASSWORD` en `.env.local`. No hace falta crear un rol especial en Supabase: estas credenciales solo viven en la app y se utilizan para el inicio de sesión del panel.
 
 ## ¿Cuál es la raíz del proyecto?

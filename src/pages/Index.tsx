@@ -19,6 +19,9 @@ import { useCandidateData } from "@/hooks/useCandidateData";
 import { useToast } from "@/hooks/use-toast";
 
 const DEFAULT_WEBHOOK_URL = "https://primary-production-cdb3.up.railway.app/webhook-test/f989f35e-86b1-461a-bf6a-4be69ecc8f3a";
+const DEFAULT_STATUS = "activo";
+
+const getCandidateStatus = (candidate: Candidate): string => DEFAULT_STATUS;
 
 const Index = () => {
   const [language, setLanguage] = useState<CandidateLocale>("en");
@@ -109,7 +112,7 @@ const Index = () => {
     const statusCounts = new Map<string, number>();
 
     candidates.forEach(candidate => {
-      const statusKey = candidate.estado?.trim().toLowerCase() || "desconocido";
+      const statusKey = getCandidateStatus(candidate);
       statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
     });
 
@@ -164,7 +167,7 @@ const Index = () => {
     }
 
     return candidates.filter((candidate: Candidate) => {
-      const candidateStatus = candidate.estado?.trim().toLowerCase() || "desconocido";
+      const candidateStatus = getCandidateStatus(candidate);
       const matchesSelectedStatus = selectedStatus ? candidateStatus === selectedStatus : true;
 
       if (!matchesSelectedStatus) {
@@ -172,7 +175,7 @@ const Index = () => {
       }
 
       if (normalizedWebhookNames.size > 0) {
-        return normalizedWebhookNames.has(candidate.nombre.trim().toLowerCase());
+        return normalizedWebhookNames.has(candidate.fullName.trim().toLowerCase());
       }
 
       return candidateMatchesCriteria(candidate, searchCriteria);

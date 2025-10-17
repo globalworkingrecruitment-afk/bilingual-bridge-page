@@ -2,52 +2,23 @@ import type { Candidate, CandidateLocale, CandidateLocalizedProfile } from "@/ty
 
 const SUPPORTED_LOCALES: CandidateLocale[] = ["en", "no"];
 
-type LocalizedFieldPrefix =
-  | "experiencia_medica"
-  | "experiencia_no_medica"
-  | "formacion"
-  | "profesion"
-  | "carta_resumen"
-  | "carta";
-
-const LOCALIZED_SUFFIX: Record<CandidateLocale, "en" | "no"> = {
-  en: "en",
-  no: "no",
-};
-
-const normalizeTextValue = (value: string | null | undefined): string | null => {
-  if (!value) return null;
+const normalizeTextValue = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const getLocalizedCandidateField = (
-  candidate: Candidate,
-  prefix: LocalizedFieldPrefix,
-  locale: CandidateLocale,
-): string | null => {
-  const suffix = LOCALIZED_SUFFIX[locale];
-  const localizedKey = `${prefix}_${suffix}` as keyof Candidate;
-  const fallbackKey = `${prefix}_en` as keyof Candidate;
-
-  const localizedValue = candidate[localizedKey];
-  const fallbackValue = candidate[fallbackKey];
-
-  return (
-    normalizeTextValue(typeof localizedValue === "string" ? localizedValue : null) ??
-    normalizeTextValue(typeof fallbackValue === "string" ? fallbackValue : null)
-  );
-};
-
-const getLocalizedLanguages = (candidate: Candidate, locale: CandidateLocale): string[] => {
-  const localized = locale === "no" ? candidate.idiomas_no : candidate.idiomas_en;
-  const fallback = candidate.idiomas_en;
-
-  if (Array.isArray(localized) && localized.length > 0) {
-    return localized;
+const coerceLanguages = (value: unknown, fallback: string[] = []): string[] => {
+  if (!Array.isArray(value)) {
+    return fallback;
   }
 
-  return Array.isArray(fallback) ? fallback : [];
+  const normalized = value
+    .filter((item): item is string => typeof item === "string")
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : fallback;
 };
 
 export const isCandidateLocale = (value: string): value is CandidateLocale =>
@@ -57,32 +28,34 @@ export const getCandidateProfile = (
   candidate: Candidate,
   locale: CandidateLocale,
 ): CandidateLocalizedProfile => {
-  const profession =
-    getLocalizedCandidateField(candidate, "profesion", locale) ??
-    getLocalizedCandidateField(candidate, "profesion", "en") ??
-    "";
+  const fallbackProfile = candidate.profile.en;
+  const localizedProfile = candidate.profile[locale] ?? fallbackProfile;
 
-  const medicalExperience = getLocalizedCandidateField(candidate, "experiencia_medica", locale);
-  const nonMedicalExperience = getLocalizedCandidateField(candidate, "experiencia_no_medica", locale);
-  const education = getLocalizedCandidateField(candidate, "formacion", locale);
-  const coverLetterSummary = getLocalizedCandidateField(candidate, "carta_resumen", locale);
-  const coverLetterFull = getLocalizedCandidateField(candidate, "carta", locale);
-  const languages = getLocalizedLanguages(candidate, locale);
-  const experienceSegments = [medicalExperience, nonMedicalExperience]
-    .map(segment => (segment ?? "").trim())
-    .filter(Boolean);
-  const experience = experienceSegments.join("\n\n");
-
-  return {
-    profession,
-    experience,
-    medical_experience: medicalExperience,
-    non_medical_experience: nonMedicalExperience,
-    languages,
-    cover_letter_summary: coverLetterSummary,
-    cover_letter_full: coverLetterFull,
-    education,
+  const normalizedProfile: CandidateLocalizedProfile = {
+    profession:
+      normalizeTextValue(localizedProfile?.profession) ??
+      normalizeTextValue(fallbackProfile?.profession) ??
+      "",
+    experience:
+      normalizeTextValue(localizedProfile?.experience) ??
+      normalizeTextValue(fallbackProfile?.experience) ??
+      "",
+    languages: coerceLanguages(localizedProfile?.languages, coerceLanguages(fallbackProfile?.languages)),
+    cover_letter_summary:
+      normalizeTextValue(localizedProfile?.cover_letter_summary) ??
+      normalizeTextValue(fallbackProfile?.cover_letter_summary) ??
+      null,
+    cover_letter_full:
+      normalizeTextValue(localizedProfile?.cover_letter_full) ??
+      normalizeTextValue(fallbackProfile?.cover_letter_full) ??
+      null,
+    education:
+      normalizeTextValue(localizedProfile?.education) ??
+      normalizeTextValue(fallbackProfile?.education) ??
+      null,
   };
+
+  return normalizedProfile;
 };
 
 export const buildExperienceSummary = (profile: CandidateLocalizedProfile): string =>

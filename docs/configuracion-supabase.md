@@ -13,7 +13,7 @@ Esta guía describe paso a paso cómo conectar la aplicación desplegada en Verc
 1. Entra en el panel de Supabase y selecciona tu proyecto.
 2. Abre **SQL Editor** y pulsa **New query**.
 3. Copia el contenido del archivo [`docs/migracion-completa.sql`](./migracion-completa.sql) del repositorio.
-4. Pega el SQL en el editor y pulsa **Run** para crear la tabla `public.candidate_data`, los triggers y las políticas RLS necesarias.
+4. Pega el SQL en el editor y pulsa **Run** para crear las tablas, funciones y políticas (incluyendo `public.candidates` y los helpers `admin_create_app_user`/`authenticate_app_user`).
 
 > ❗ Si al crear usuarios ves el error `function gen_salt(unknown) does not exist`, significa que la extensión `pgcrypto` no se instaló. Ejecuta en el SQL Editor el comando `CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;` y vuelve a intentar. Después comprueba que `select gen_random_uuid();` devuelve un valor para asegurarte de que quedó habilitada.
 
@@ -80,7 +80,7 @@ El panel interno necesita un usuario con permisos de administrador, pero **no es
 
 1. Ejecuta `npm run dev`.
 2. Abre `http://localhost:5173` y haz clic en **Iniciar sesión**.
-3. La aplicación iniciará sesión automáticamente con el usuario de servicio y cargará los registros de `candidate_data` si la base de datos está correctamente configurada.
+3. La aplicación iniciará sesión automáticamente con el usuario de servicio y cargará los registros de `candidates` si la base de datos está correctamente configurada.
 
 ## 8. Despliegue en Vercel
 
