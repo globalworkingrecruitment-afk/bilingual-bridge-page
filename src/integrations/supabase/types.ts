@@ -85,8 +85,8 @@ export type Database = {
           formacion_en: string | null
           formacion_no: string | null
           id: string
-          idiomas_en: string[]
-          idiomas_no: string[]
+          idiomas_en: string | null
+          idiomas_no: string | null
           nombre: string
           profesion_en: string | null
           profesion_no: string | null
@@ -108,8 +108,8 @@ export type Database = {
           formacion_en?: string | null
           formacion_no?: string | null
           id?: string
-          idiomas_en?: string[]
-          idiomas_no?: string[]
+          idiomas_en?: string | null
+          idiomas_no?: string | null
           nombre: string
           profesion_en?: string | null
           profesion_no?: string | null
@@ -131,8 +131,8 @@ export type Database = {
           formacion_en?: string | null
           formacion_no?: string | null
           id?: string
-          idiomas_en?: string[]
-          idiomas_no?: string[]
+          idiomas_en?: string | null
+          idiomas_no?: string | null
           nombre?: string
           profesion_en?: string | null
           profesion_no?: string | null

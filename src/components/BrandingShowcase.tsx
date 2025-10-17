@@ -17,9 +17,9 @@ const logos = [
     label: "Global Working — Stacked (White)",
   },
   {
-    src: "/branding/globalworking-horizontal-white-signature.svg",
-    alt: "Global Working horizontal logo in white with signature",
-    label: "Global Working — Horizontal (White, signature)",
+    src: "/branding/LogoGrandeHorizontal.png",
+    alt: "Global Working LogoGrande horizontal logo in color",
+    label: "LogoGrande — Horizontal",
   },
   {
     src: "/branding/redgw-color.svg",
