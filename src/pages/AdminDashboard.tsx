@@ -1,7 +1,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { AppUser, AccessLog, CandidateViewLog, SearchLog } from "@/types/auth";
+import {
+  AppUser,
+  AccessLog,
+  CandidateViewLog,
+  EmployerInteractionLog,
+  SearchLog,
+} from "@/types/auth";
 import { ScheduleRequestLog } from "@/types/schedule";
 import {
   addUser,
@@ -11,6 +17,7 @@ import {
   getCandidateViewsByUser,
   getScheduleRequests,
   getSearchLogsByUser,
+  getEmployerInteractionsByUser,
 } from "@/lib/localDb";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -29,6 +36,7 @@ const AdminDashboard = () => {
   const [logs, setLogs] = useState<AccessLog[]>([]);
   const [candidateViews, setCandidateViews] = useState<Record<string, CandidateViewLog[]>>({});
   const [searchLogs, setSearchLogs] = useState<Record<string, SearchLog[]>>({});
+  const [interactionLogs, setInteractionLogs] = useState<Record<string, EmployerInteractionLog[]>>({});
   const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserName, setNewUserName] = useState("");
@@ -48,12 +56,20 @@ const AdminDashboard = () => {
       }
 
       try {
-        const [usersData, logsData, viewsByUser, requestsData, searchesByUser] = await Promise.all([
+        const [
+          usersData,
+          logsData,
+          viewsByUser,
+          requestsData,
+          searchesByUser,
+          interactionsByUser,
+        ] = await Promise.all([
           getUsers(),
           getAccessLogs(),
           getCandidateViewsByUser(),
           getScheduleRequests(),
           getSearchLogsByUser(),
+          getEmployerInteractionsByUser(),
         ]);
 
         setUsers(usersData);
@@ -61,6 +77,7 @@ const AdminDashboard = () => {
         setCandidateViews(viewsByUser);
         setMeetingRequests(requestsData);
         setSearchLogs(searchesByUser);
+        setInteractionLogs(interactionsByUser);
         return true;
       } catch (error) {
         const message =
@@ -134,6 +151,14 @@ const AdminDashboard = () => {
     [searchLogs],
   );
 
+  const getInteractionsForUser = useCallback(
+    (username: string): EmployerInteractionLog[] => {
+      const key = username.trim().toLowerCase();
+      return interactionLogs[key] ?? [];
+    },
+    [interactionLogs],
+  );
+
   const getAccessesForUser = useCallback(
     (username: string): AccessLog[] => {
       const key = username.trim().toLowerCase();
@@ -149,6 +174,39 @@ const AdminDashboard = () => {
     },
     [getAccessesForUser],
   );
+
+  const formatInteractionLabel = useCallback((interactionType: string): string => {
+    const normalized = interactionType.trim();
+
+    if (!normalized) {
+      return "Interacción";
+    }
+
+    return normalized
+      .split(/[_-]/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }, []);
+
+  const formatInteractionDetail = useCallback((value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "Sin datos";
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (typeof value === "number" || typeof value === "boolean") {
+      return value.toString();
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return String(value);
+    }
+  }, []);
 
   const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -351,6 +409,7 @@ const AdminDashboard = () => {
                     <TableHead>Candidatos vistos</TableHead>
                     <TableHead>Solicitudes de reunión</TableHead>
                     <TableHead>Búsquedas registradas</TableHead>
+                    <TableHead>Interacciones</TableHead>
                     <TableHead>Creado</TableHead>
                     <TableHead>Último acceso</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -361,6 +420,7 @@ const AdminDashboard = () => {
                     const views = getViewsForUser(user.username);
                     const requests = getRequestsForUser(user.username);
                     const searches = getSearchesForUser(user.username);
+                    const interactions = getInteractionsForUser(user.username);
                     const accesses = getAccessesForUser(user.username);
                     const lastAccess = getLastAccessForUser(user.username);
 
@@ -412,6 +472,15 @@ const AdminDashboard = () => {
                             </Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {interactions.length === 0 ? (
+                            <span className="text-sm text-muted-foreground">Sin interacciones</span>
+                          ) : (
+                            <Badge variant="outline" className="font-semibold">
+                              {interactions.length}
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {lastAccess ? (
@@ -430,8 +499,8 @@ const AdminDashboard = () => {
                         </TableRow>
                         {hoveredUserId === user.id && (
                           <TableRow className="bg-slate-50/70">
-                            <TableCell colSpan={10} className="p-6">
-                              <div className="grid gap-6 md:grid-cols-4">
+                          <TableCell colSpan={11} className="p-6">
+                            <div className="grid gap-6 md:grid-cols-5">
                                 <div>
                                   <div className="flex items-center justify-between">
                                     <p className="text-sm font-semibold text-foreground">Candidatos vistos</p>
@@ -522,6 +591,51 @@ const AdminDashboard = () => {
                                           ) : (
                                             <span className="text-xs italic text-muted-foreground">
                                               Sin coincidencias registradas
+                                            </span>
+                                          )}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-sm font-semibold text-foreground">Interacciones</p>
+                                    {interactions.length > 0 && (
+                                      <span className="text-xs text-muted-foreground">
+                                        Última interacción {new Date(interactions[0].occurredAt).toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {interactions.length === 0 ? (
+                                    <p className="mt-2 text-sm text-muted-foreground">Sin interacciones registradas.</p>
+                                  ) : (
+                                    <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+                                      {interactions.map((interaction) => (
+                                        <li
+                                          key={interaction.id}
+                                          className="flex flex-col gap-1 rounded border border-slate-200/80 p-3"
+                                        >
+                                          <span className="font-medium text-foreground">
+                                            {formatInteractionLabel(interaction.interactionType)}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(interaction.occurredAt).toLocaleString()}
+                                          </span>
+                                          {Object.entries(interaction.context).length > 0 ? (
+                                            <ul className="space-y-1 text-xs text-muted-foreground">
+                                              {Object.entries(interaction.context).map(([key, value]) => (
+                                                <li key={key} className="flex flex-col gap-0.5">
+                                                  <span className="font-semibold capitalize text-foreground">
+                                                    {key.replace(/[_-]/g, " ")}
+                                                  </span>
+                                                  <span>{formatInteractionDetail(value)}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          ) : (
+                                            <span className="text-xs italic text-muted-foreground">
+                                              Sin detalles adicionales
                                             </span>
                                           )}
                                         </li>

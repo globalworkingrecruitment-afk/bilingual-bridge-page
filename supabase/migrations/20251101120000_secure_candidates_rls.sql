@@ -11,7 +11,7 @@ END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
 CREATE TABLE public.candidate_data (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   nombre TEXT NOT NULL,
   experiencia_medica_en TEXT,
   experiencia_medica_no TEXT,

@@ -165,6 +165,36 @@ export type Database = {
         }
         Relationships: []
       }
+      employer_interactions: {
+        Row: {
+          id: string
+          employer_id: string
+          employer_username: string
+          interaction_type: string
+          context: Json
+          occurred_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          employer_id?: string
+          employer_username: string
+          interaction_type: string
+          context?: Json
+          occurred_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          employer_id?: string
+          employer_username?: string
+          interaction_type?: string
+          context?: Json
+          occurred_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       employer_search_logs: {
         Row: {
           id: string
@@ -260,6 +290,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Tables"]["candidate_view_logs"]["Row"]
       }
+      admin_list_employer_interactions: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["employer_interactions"]["Row"]
+      }
       admin_list_employer_search_logs: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"]
@@ -288,6 +322,14 @@ export type Database = {
           p_candidate_names?: string[] | null
         }
         Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"]
+      }
+      log_employer_interaction: {
+        Args: {
+          p_employer_username: string
+          p_interaction_type: string
+          p_context?: Json | null
+        }
+        Returns: Database["public"]["Tables"]["employer_interactions"]["Row"]
       }
     }
     Enums: {

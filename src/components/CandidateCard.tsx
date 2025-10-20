@@ -30,6 +30,7 @@ import { buildExperienceSummary, getCandidateProfile } from "@/lib/candidates";
 import {
   getUserByIdentifier,
   recordCandidateView,
+  recordEmployerInteraction,
   recordScheduleRequest,
   updateUserEmail,
 } from "@/lib/localDb";
@@ -143,6 +144,12 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       void (async () => {
         try {
           await recordCandidateView(currentUser.username, candidate.id, candidate.fullName);
+          await recordEmployerInteraction(currentUser.username, "candidate_profile_viewed", {
+            candidate_id: candidate.id,
+            candidate_name: candidate.fullName,
+          }).catch((interactionError) => {
+            console.warn("No se pudo registrar la interacción de vista de candidato", interactionError);
+          });
         } catch (error) {
           console.warn("No se pudo registrar la vista del candidato", error);
         }
@@ -311,6 +318,15 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
         candidateName: candidate.fullName,
         candidateEmail: normalizedCandidateEmail,
         availability: normalizedAvailability,
+      });
+
+      await recordEmployerInteraction(currentUser.username, "schedule_request_submitted", {
+        candidate_id: candidate.id,
+        candidate_name: candidate.fullName,
+        employer_email: normalizedEmployerEmail,
+        availability: normalizedAvailability,
+      }).catch((interactionError) => {
+        console.warn("No se pudo registrar la interacción de solicitud de reunión", interactionError);
       });
 
       toast({

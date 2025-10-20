@@ -12,7 +12,7 @@ $$;
 
 -- Table storing application users managed by the administrator dashboard
 CREATE TABLE IF NOT EXISTS public.app_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   username TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
   full_name TEXT,
@@ -65,7 +65,7 @@ SET search_path = public;
 
 -- Table storing login attempts recorded by the platform
 CREATE TABLE IF NOT EXISTS public.access_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   username TEXT NOT NULL,
   role public.user_role NOT NULL,
   logged_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
@@ -87,7 +87,7 @@ USING (true);
 
 -- Candidate profile views performed by employers
 CREATE TABLE IF NOT EXISTS public.candidate_view_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
   candidate_id UUID NOT NULL,
@@ -122,7 +122,7 @@ EXECUTE FUNCTION public.set_employer_id_from_username();
 
 -- Candidate meeting requests triggered by employers
 CREATE TABLE IF NOT EXISTS public.schedule_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
   employer_email TEXT NOT NULL,
@@ -161,7 +161,7 @@ EXECUTE FUNCTION public.set_employer_id_from_username();
 
 -- Search logs keeping track of employer queries and resulting candidates
 CREATE TABLE IF NOT EXISTS public.employer_search_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
   query TEXT NOT NULL,

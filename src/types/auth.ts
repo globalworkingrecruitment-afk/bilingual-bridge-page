@@ -40,3 +40,13 @@ export interface SearchLog {
   searchedAt: string;
   updatedAt?: string;
 }
+
+export interface EmployerInteractionLog {
+  id: string;
+  employerId: string;
+  employerUsername: string;
+  interactionType: string;
+  context: Record<string, unknown>;
+  occurredAt: string;
+  createdAt: string;
+}

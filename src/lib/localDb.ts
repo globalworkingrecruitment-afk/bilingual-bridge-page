@@ -1,8 +1,16 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import { ensureSupabaseSession } from "@/lib/supabase-auth";
-import type { AccessLog, AppUser, CandidateViewLog, SearchLog, SessionUser, UserRole } from "@/types/auth";
+import type {
+  AccessLog,
+  AppUser,
+  CandidateViewLog,
+  EmployerInteractionLog,
+  SearchLog,
+  SessionUser,
+  UserRole,
+} from "@/types/auth";
 import type { ScheduleRequestLog } from "@/types/schedule";
 
 const SESSION_KEY = "bbp-auth-session";
@@ -32,6 +40,7 @@ const writeToStorage = <T>(key: string, value: T) => {
 type AppUserRow = Database["public"]["Tables"]["app_users"]["Row"];
 type AccessLogRow = Database["public"]["Tables"]["access_logs"]["Row"];
 type CandidateViewRow = Database["public"]["Tables"]["candidate_view_logs"]["Row"];
+type InteractionLogRow = Database["public"]["Tables"]["employer_interactions"]["Row"];
 type ScheduleRequestRow = Database["public"]["Tables"]["schedule_requests"]["Row"];
 type SearchLogRow = Database["public"]["Tables"]["employer_search_logs"]["Row"];
 
@@ -51,6 +60,50 @@ const sortByDesc = <T>(items: T[], getDate: (item: T) => string): T[] =>
   [...items].sort(
     (a, b) => new Date(getDate(b)).valueOf() - new Date(getDate(a)).valueOf(),
   );
+
+const toJsonValue = (value: unknown): Json => {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toJsonValue) as Json;
+  }
+
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, toJsonValue(entry)]),
+    ) as Json;
+  }
+
+  return String(value);
+};
+
+const normalizeInteractionContext = (
+  context?: Record<string, unknown>,
+): Record<string, Json> => {
+  if (!context || typeof context !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(context)
+      .filter(([key]) => key.trim().length > 0)
+      .map(([key, value]) => [key, toJsonValue(value)]),
+  );
+};
+
+const parseInteractionContext = (value: Json | null): Record<string, unknown> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return { ...value } as Record<string, unknown>;
+};
 
 const mapAppUserRow = (row: AppUserRow): AppUser => ({
   id: row.id,
@@ -76,6 +129,16 @@ const mapCandidateViewRow = (row: CandidateViewRow): CandidateViewLog => ({
   candidateId: row.candidate_id,
   candidateName: row.candidate_name,
   viewedAt: row.viewed_at,
+});
+
+const mapInteractionLogRow = (row: InteractionLogRow): EmployerInteractionLog => ({
+  id: row.id,
+  employerId: row.employer_id,
+  employerUsername: row.employer_username,
+  interactionType: row.interaction_type,
+  context: parseInteractionContext(row.context),
+  occurredAt: row.occurred_at,
+  createdAt: row.created_at,
 });
 
 const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => ({
@@ -566,6 +629,43 @@ export const recordScheduleRequest = async (params: {
   return mapScheduleRequestRow(data);
 };
 
+export const getEmployerInteractions = async (): Promise<EmployerInteractionLog[]> => {
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_list_employer_interactions"),
+  );
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  const mapped = (data ?? []).map(mapInteractionLogRow);
+  return sortByDesc(mapped, (log) => log.occurredAt);
+};
+
+export const getEmployerInteractionsByUser = async (): Promise<
+  Record<string, EmployerInteractionLog[]>
+> => {
+  const interactions = await getEmployerInteractions();
+
+  const grouped = interactions.reduce<Record<string, EmployerInteractionLog[]>>((accumulator, log) => {
+    const key = log.employerUsername.trim().toLowerCase();
+
+    if (!accumulator[key]) {
+      accumulator[key] = [];
+    }
+
+    accumulator[key].push(log);
+    return accumulator;
+  }, {});
+
+  return Object.fromEntries(
+    Object.entries(grouped).map(([key, entries]) => [
+      key,
+      sortByDesc(entries, (entry) => entry.occurredAt),
+    ]),
+  );
+};
+
 export const getSearchLogs = async (): Promise<SearchLog[]> => {
   const { data, error } = await executeWithAuthRetry(() =>
     supabase.rpc("admin_list_employer_search_logs"),
@@ -657,4 +757,33 @@ export const updateSearchLogCandidates = async (
   }
 
   return data ? mapSearchLogRow(data) : null;
+};
+
+export const recordEmployerInteraction = async (
+  employerUsername: string,
+  interactionType: string,
+  context?: Record<string, unknown>,
+): Promise<EmployerInteractionLog | null> => {
+  const normalizedUsername = employerUsername?.trim();
+  const normalizedType = interactionType?.trim();
+
+  if (!normalizedUsername || !normalizedType) {
+    return null;
+  }
+
+  const sanitizedContext = normalizeInteractionContext(context);
+
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("log_employer_interaction", {
+      p_employer_username: normalizedUsername,
+      p_interaction_type: normalizedType,
+      p_context: sanitizedContext,
+    }),
+  );
+
+  if (error) {
+    throw new Error(`[supabase] ${error.message}`);
+  }
+
+  return mapInteractionLogRow(data);
 };

@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Core candidates table
 CREATE TABLE public.candidates (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  id UUID NOT NULL DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   full_name TEXT NOT NULL,
   birth_year SMALLINT NOT NULL CHECK (birth_year BETWEEN 1900 AND date_part('year', now())),
   cover_letter TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TYPE public.care_setting AS ENUM (
 
 -- Each medical experience is stored independently to allow multiple entries per candidate
 CREATE TABLE public.candidate_experiences (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  id UUID NOT NULL DEFAULT extensions.gen_random_uuid() PRIMARY KEY,
   candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   duration TEXT NOT NULL,
