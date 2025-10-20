@@ -1,5 +1,6 @@
 export interface ScheduleRequestLog {
   id: string;
+  employerId: string;
   employerUsername: string;
   employerEmail: string;
   employerName?: string;

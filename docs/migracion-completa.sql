@@ -238,9 +238,36 @@ EXECUTE FUNCTION public.update_updated_at_column();
 
 DROP TRIGGER IF EXISTS app_users_hash_password ON public.app_users;
 CREATE TRIGGER app_users_hash_password
-BEFORE INSERT OR UPDATE OF password ON public.app_users
-FOR EACH ROW
-EXECUTE FUNCTION public.hash_password();
+  BEFORE INSERT OR UPDATE OF password ON public.app_users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.hash_password();
+
+CREATE OR REPLACE FUNCTION public.set_employer_id_from_username()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+  matched_user_id UUID;
+BEGIN
+  IF NEW.employer_id IS NOT NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT id
+    INTO matched_user_id
+    FROM public.app_users
+    WHERE username = NEW.employer_username
+    LIMIT 1;
+
+  IF matched_user_id IS NULL THEN
+    RAISE EXCEPTION 'No se encontró el empleador con username %', NEW.employer_username;
+  END IF;
+
+  NEW.employer_id = matched_user_id;
+  RETURN NEW;
+END;
+$$;
 
 -----------------------------
 -- 7) Tabla: access_logs
@@ -276,8 +303,9 @@ CREATE INDEX IF NOT EXISTS idx_access_logs_user_time
 -----------------------------
 CREATE TABLE IF NOT EXISTS public.candidate_view_logs (
   id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_id UUID NOT NULL,
   candidate_name TEXT NOT NULL,
   viewed_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -305,16 +333,25 @@ CREATE INDEX IF NOT EXISTS candidate_view_logs_candidate_idx
   ON public.candidate_view_logs(candidate_id, viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_candidate_view_logs_emp_time
   ON public.candidate_view_logs (employer_username, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_candidate_view_logs_employer_id
+  ON public.candidate_view_logs (employer_id, viewed_at DESC);
+
+DROP TRIGGER IF EXISTS set_candidate_view_employer_id ON public.candidate_view_logs;
+CREATE TRIGGER set_candidate_view_employer_id
+  BEFORE INSERT ON public.candidate_view_logs
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_employer_id_from_username();
 
 -----------------------------
 -- 9) Tabla: schedule_requests
 -----------------------------
 CREATE TABLE IF NOT EXISTS public.schedule_requests (
   id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
   employer_email TEXT NOT NULL,
   employer_name TEXT,
-  candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE,
+  candidate_id UUID NOT NULL,
   candidate_name TEXT NOT NULL,
   candidate_email TEXT NOT NULL,
   availability TEXT NOT NULL,
@@ -345,12 +382,21 @@ CREATE INDEX IF NOT EXISTS schedule_requests_candidate_idx
   ON public.schedule_requests(candidate_id, requested_at DESC);
 CREATE INDEX IF NOT EXISTS idx_schedule_requests_emp_time
   ON public.schedule_requests (employer_username, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_schedule_requests_employer_id
+  ON public.schedule_requests (employer_id, requested_at DESC);
+
+DROP TRIGGER IF EXISTS set_schedule_request_employer_id ON public.schedule_requests;
+CREATE TRIGGER set_schedule_request_employer_id
+  BEFORE INSERT ON public.schedule_requests
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_employer_id_from_username();
 
 -----------------------------
 -- 10) Tabla: employer_search_logs
 -----------------------------
 CREATE TABLE IF NOT EXISTS public.employer_search_logs (
   id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  employer_id UUID NOT NULL,
   employer_username TEXT NOT NULL,
   query TEXT NOT NULL,
   candidate_names TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
@@ -395,6 +441,14 @@ CREATE INDEX IF NOT EXISTS employer_search_logs_employer_idx
   ON public.employer_search_logs(employer_username, searched_at DESC);
 CREATE INDEX IF NOT EXISTS idx_employer_search_logs_time
   ON public.employer_search_logs (searched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_employer_search_logs_employer_id
+  ON public.employer_search_logs (employer_id, searched_at DESC);
+
+DROP TRIGGER IF EXISTS set_search_log_employer_id ON public.employer_search_logs;
+CREATE TRIGGER set_search_log_employer_id
+  BEFORE INSERT ON public.employer_search_logs
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_employer_id_from_username();
 
 CREATE OR REPLACE FUNCTION public.log_employer_search(
   p_employer_username text,

@@ -71,6 +71,7 @@ const mapAccessLogRow = (row: AccessLogRow): AccessLog => ({
 
 const mapCandidateViewRow = (row: CandidateViewRow): CandidateViewLog => ({
   id: row.id,
+  employerId: row.employer_id,
   employerUsername: row.employer_username,
   candidateId: row.candidate_id,
   candidateName: row.candidate_name,
@@ -79,6 +80,7 @@ const mapCandidateViewRow = (row: CandidateViewRow): CandidateViewLog => ({
 
 const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => ({
   id: row.id,
+  employerId: row.employer_id,
   employerUsername: row.employer_username,
   employerEmail: row.employer_email,
   employerName: row.employer_name ?? undefined,
@@ -91,6 +93,7 @@ const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => (
 
 const mapSearchLogRow = (row: SearchLogRow): SearchLog => ({
   id: row.id,
+  employerId: row.employer_id,
   employerUsername: row.employer_username,
   query: row.query,
   candidateNames: row.candidate_names ?? [],
