@@ -98,6 +98,82 @@ const mapSearchLogRow = (row: SearchLogRow): SearchLog => ({
   updatedAt: row.updated_at ?? undefined,
 });
 
+const isPostgrestError = (error: unknown): error is PostgrestError => {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof (error as { code: unknown }).code === "string" &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string",
+  );
+};
+
+const isRetryableAuthError = (error: unknown): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  if (isPostgrestError(error)) {
+    const code = error.code?.toUpperCase();
+
+    if (code === "PGRST301" || code === "PGRST302" || code === "PGRST303") {
+      return true;
+    }
+
+    const message = error.message?.toLowerCase?.() ?? "";
+
+    if (
+      message.includes("jwt expired") ||
+      message.includes("invalid jwt") ||
+      message.includes("auth session missing") ||
+      message.includes("no auth session")
+    ) {
+      return true;
+    }
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+
+    return (
+      message.includes("jwt expired") ||
+      message.includes("invalid jwt") ||
+      message.includes("auth session missing") ||
+      message.includes("no auth session") ||
+      message.includes("no current session")
+    );
+  }
+
+  return false;
+};
+
+const executeWithAuthRetry = async <T extends { error: PostgrestError | null }>(
+  operation: () => Promise<T>,
+): Promise<T> => {
+  let attempt = 0;
+
+  // Attempt the operation up to two times, refreshing the Supabase session if we
+  // detect an authentication error (for example, an expired JWT).
+  while (true) {
+    await ensureSupabaseSession();
+
+    try {
+      const response = await operation();
+
+      if (!response.error || !isRetryableAuthError(response.error) || attempt >= 1) {
+        return response;
+      }
+    } catch (caughtError) {
+      if (!isRetryableAuthError(caughtError) || attempt >= 1) {
+        throw caughtError;
+      }
+    }
+
+    attempt += 1;
+  }
+};
+
 export const initializeLocalDb = async () => {
   await ensureSupabaseSession();
 };
@@ -129,9 +205,7 @@ export const persistSession = (session: SessionUser | null) => {
 };
 
 export const getUsers = async (): Promise<AppUser[]> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_list_app_users");
+  const { data, error } = await executeWithAuthRetry(() => supabase.rpc("admin_list_app_users"));
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -148,16 +222,16 @@ const getUserByIdentifierInternal = async (identifier: string): Promise<AppUserR
     return null;
   }
 
-  await ensureSupabaseSession();
-
   const sanitized = sanitizeIlikeValue(normalized.toLowerCase());
 
-  const { data, error } = await supabase
-    .from("app_users")
-    .select("*")
-    .or(`username.ilike.${sanitized},email.ilike.${sanitized}`)
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("app_users")
+      .select("*")
+      .or(`username.ilike.${sanitized},email.ilike.${sanitized}`)
+      .limit(1)
+      .maybeSingle(),
+  );
 
   if (error) {
     if (isNoRowsError(error)) {
@@ -186,12 +260,12 @@ export const validateUserCredentials = async (
     return null;
   }
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("authenticate_app_user", {
-    p_identifier: normalizedIdentifier,
-    p_password: normalizedPassword,
-  });
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("authenticate_app_user", {
+      p_identifier: normalizedIdentifier,
+      p_password: normalizedPassword,
+    }),
+  );
 
   if (error) {
     if (error.message.toLowerCase().includes("row-level security")) {
@@ -231,14 +305,14 @@ export const addUser = async (
     throw new Error("La contraseña no es válida.");
   }
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_create_app_user", {
-    p_username: normalizedUsername,
-    p_password: normalizedPassword,
-    p_full_name: fullName?.trim() || null,
-    p_email: normalizedEmail || null,
-  });
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_create_app_user", {
+      p_username: normalizedUsername,
+      p_password: normalizedPassword,
+      p_full_name: fullName?.trim() || null,
+      p_email: normalizedEmail || null,
+    }),
+  );
 
   if (error) {
     const normalizedErrorMessage = error.message.toLowerCase();
@@ -280,9 +354,9 @@ export const addUser = async (
 };
 
 export const toggleUserStatus = async (userId: string): Promise<AppUser | null> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_toggle_app_user_status", { p_user_id: userId });
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_toggle_app_user_status", { p_user_id: userId }),
+  );
 
   if (error) {
     if (error.message.toLowerCase().includes("null value")) {
@@ -302,14 +376,14 @@ export const updateUserEmail = async (userId: string, email: string): Promise<Ap
     throw new Error("El correo electrónico es obligatorio.");
   }
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase
-    .from("app_users")
-    .update({ email: normalizedEmail })
-    .eq("id", userId)
-    .select("*")
-    .maybeSingle();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("app_users")
+      .update({ email: normalizedEmail })
+      .eq("id", userId)
+      .select("*")
+      .maybeSingle(),
+  );
 
   if (error) {
     if (isNoRowsError(error)) {
@@ -323,9 +397,9 @@ export const updateUserEmail = async (userId: string, email: string): Promise<Ap
 };
 
 export const removeUser = async (userId: string) => {
-  await ensureSupabaseSession();
-
-  const { error } = await supabase.from("app_users").delete().eq("id", userId);
+  const { error } = await executeWithAuthRetry(() =>
+    supabase.from("app_users").delete().eq("id", userId),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -333,9 +407,7 @@ export const removeUser = async (userId: string) => {
 };
 
 export const getAccessLogs = async (): Promise<AccessLog[]> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_list_access_logs");
+  const { data, error } = await executeWithAuthRetry(() => supabase.rpc("admin_list_access_logs"));
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -346,13 +418,13 @@ export const getAccessLogs = async (): Promise<AccessLog[]> => {
 };
 
 export const addAccessLog = async (username: string, role: UserRole): Promise<AccessLog> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase
-    .from("access_logs")
-    .insert({ username, role })
-    .select("*")
-    .single();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("access_logs")
+      .insert({ username, role })
+      .select("*")
+      .single(),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -362,9 +434,9 @@ export const addAccessLog = async (username: string, role: UserRole): Promise<Ac
 };
 
 export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_list_candidate_view_logs");
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_list_candidate_view_logs"),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -409,17 +481,17 @@ export const recordCandidateView = async (
     return null;
   }
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase
-    .from("candidate_view_logs")
-    .insert({
-      employer_username: normalizedUsername,
-      candidate_id: normalizedCandidateId,
-      candidate_name: normalizedCandidateName,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("candidate_view_logs")
+      .insert({
+        employer_username: normalizedUsername,
+        candidate_id: normalizedCandidateId,
+        candidate_name: normalizedCandidateName,
+      })
+      .select("*")
+      .single(),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -429,9 +501,9 @@ export const recordCandidateView = async (
 };
 
 export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_list_schedule_requests");
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_list_schedule_requests"),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -468,21 +540,21 @@ export const recordScheduleRequest = async (params: {
     return null;
   }
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase
-    .from("schedule_requests")
-    .insert({
-      employer_username: normalizedEmployerUsername,
-      employer_email: normalizedEmployerEmail,
-      employer_name: params.employerName?.trim() || null,
-      candidate_id: normalizedCandidateId,
-      candidate_name: normalizedCandidateName,
-      candidate_email: normalizedCandidateEmail,
-      availability: normalizedAvailability,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("schedule_requests")
+      .insert({
+        employer_username: normalizedEmployerUsername,
+        employer_email: normalizedEmployerEmail,
+        employer_name: params.employerName?.trim() || null,
+        candidate_id: normalizedCandidateId,
+        candidate_name: normalizedCandidateName,
+        candidate_email: normalizedCandidateEmail,
+        availability: normalizedAvailability,
+      })
+      .select("*")
+      .single(),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -492,9 +564,9 @@ export const recordScheduleRequest = async (params: {
 };
 
 export const getSearchLogs = async (): Promise<SearchLog[]> => {
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("admin_list_employer_search_logs");
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("admin_list_employer_search_logs"),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -541,13 +613,13 @@ export const recordSearchQuery = async (
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase.rpc("log_employer_search", {
-    p_employer_username: normalizedUsername,
-    p_query: normalizedQuery,
-    p_candidate_names: normalizedCandidates,
-  });
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase.rpc("log_employer_search", {
+      p_employer_username: normalizedUsername,
+      p_query: normalizedQuery,
+      p_candidate_names: normalizedCandidates,
+    }),
+  );
 
   if (error) {
     throw new Error(`[supabase] ${error.message}`);
@@ -564,14 +636,14 @@ export const updateSearchLogCandidates = async (
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
 
-  await ensureSupabaseSession();
-
-  const { data, error } = await supabase
-    .from("employer_search_logs")
-    .update({ candidate_names: normalizedCandidates })
-    .eq("id", logId)
-    .select("*")
-    .maybeSingle();
+  const { data, error } = await executeWithAuthRetry(() =>
+    supabase
+      .from("employer_search_logs")
+      .update({ candidate_names: normalizedCandidates })
+      .eq("id", logId)
+      .select("*")
+      .maybeSingle(),
+  );
 
   if (error) {
     if (isNoRowsError(error)) {
