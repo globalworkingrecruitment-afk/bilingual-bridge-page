@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { recordSearchQuery } from "@/lib/localDb";
+import { recordEmployerInteraction, recordSearchQuery } from "@/lib/localDb";
 import { useCandidateData } from "@/hooks/useCandidateData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -68,6 +68,12 @@ const Index = () => {
 
         try {
           await recordSearchQuery(currentUser.username, normalizedQuery, candidateNames);
+          await recordEmployerInteraction(currentUser.username, "search_performed", {
+            query: normalizedQuery,
+            result_count: matchedCandidates.length,
+          }).catch((interactionError) => {
+            console.warn("No se pudo registrar la interacción de búsqueda", interactionError);
+          });
         } catch (error) {
           const message =
             error instanceof Error

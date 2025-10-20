@@ -3,7 +3,7 @@ CREATE TYPE public.app_role AS ENUM ('admin', 'user');
 
 -- 2. Crear tabla de roles de usuario
 CREATE TABLE IF NOT EXISTS public.user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   user_id UUID NOT NULL,
   role public.app_role NOT NULL DEFAULT 'user',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
