@@ -14,296 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
-      access_logs: {
+      candidates: {
         Row: {
+          availability: string | null
+          birth_year: number
+          certifications: string[] | null
+          created_at: string
+          experience: string
           id: string
-          logged_at: string
-          role: Database["public"]["Enums"]["user_role"]
-          username: string
+          languages: string[] | null
+          location: string | null
+          name: string
+          photo: string | null
+          presentation: string
+          specialties: string[]
+          updated_at: string
         }
         Insert: {
+          availability?: string | null
+          birth_year: number
+          certifications?: string[] | null
+          created_at?: string
+          experience: string
           id?: string
-          logged_at?: string
-          role: Database["public"]["Enums"]["user_role"]
-          username: string
+          languages?: string[] | null
+          location?: string | null
+          name: string
+          photo?: string | null
+          presentation: string
+          specialties: string[]
+          updated_at?: string
         }
         Update: {
+          availability?: string | null
+          birth_year?: number
+          certifications?: string[] | null
+          created_at?: string
+          experience?: string
           id?: string
-          logged_at?: string
-          role?: Database["public"]["Enums"]["user_role"]
-          username?: string
+          languages?: string[] | null
+          location?: string | null
+          name?: string
+          photo?: string | null
+          presentation?: string
+          specialties?: string[]
+          updated_at?: string
         }
         Relationships: []
       }
-      app_users: {
+      user_roles: {
         Row: {
           created_at: string
-          email: string | null
-          full_name: string | null
           id: string
-          is_active: boolean
-          password: string
-          updated_at: string
-          username: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }
         Insert: {
           created_at?: string
-          email?: string | null
-          full_name?: string | null
           id?: string
-          is_active?: boolean
-          password: string
-          updated_at?: string
-          username: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
         }
         Update: {
           created_at?: string
-          email?: string | null
-          full_name?: string | null
           id?: string
-          is_active?: boolean
-          password?: string
-          updated_at?: string
-          username?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
-      }
-      candidate_data: {
-        Row: {
-          anio_nacimiento: number
-          carta_en: string | null
-          carta_no: string | null
-          carta_resumen_en: string | null
-          carta_resumen_no: string | null
-          correo: string
-          created_at: string
-          estado: string
-          experiencia_medica_en: string | null
-          experiencia_medica_no: string | null
-          experiencia_no_medica_en: string | null
-          experiencia_no_medica_no: string | null
-          formacion_en: string | null
-          formacion_no: string | null
-          id: string
-          idiomas_en: string | null
-          idiomas_no: string | null
-          nombre: string
-          profesion_en: string | null
-          profesion_no: string | null
-          updated_at: string
-        }
-        Insert: {
-          anio_nacimiento: number
-          carta_en?: string | null
-          carta_no?: string | null
-          carta_resumen_en?: string | null
-          carta_resumen_no?: string | null
-          correo: string
-          created_at?: string
-          estado?: string
-          experiencia_medica_en?: string | null
-          experiencia_medica_no?: string | null
-          experiencia_no_medica_en?: string | null
-          experiencia_no_medica_no?: string | null
-          formacion_en?: string | null
-          formacion_no?: string | null
-          id?: string
-          idiomas_en?: string | null
-          idiomas_no?: string | null
-          nombre: string
-          profesion_en?: string | null
-          profesion_no?: string | null
-          updated_at?: string
-        }
-        Update: {
-          anio_nacimiento?: number
-          carta_en?: string | null
-          carta_no?: string | null
-          carta_resumen_en?: string | null
-          carta_resumen_no?: string | null
-          correo?: string
-          created_at?: string
-          estado?: string
-          experiencia_medica_en?: string | null
-          experiencia_medica_no?: string | null
-          experiencia_no_medica_en?: string | null
-          experiencia_no_medica_no?: string | null
-          formacion_en?: string | null
-          formacion_no?: string | null
-          id?: string
-          idiomas_en?: string | null
-          idiomas_no?: string | null
-          nombre?: string
-          profesion_en?: string | null
-          profesion_no?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      candidate_view_logs: {
-        Row: {
-          candidate_id: string
-          candidate_name: string
-          employer_username: string
-          id: string
-          viewed_at: string
-        }
-        Insert: {
-          candidate_id: string
-          candidate_name: string
-          employer_username: string
-          id?: string
-          viewed_at?: string
-        }
-        Update: {
-          candidate_id?: string
-          candidate_name?: string
-          employer_username?: string
-          id?: string
-          viewed_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_view_logs_candidate_id_fkey"
-            columns: ["candidate_id"]
-            referencedRelation: "candidate_data"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      employer_search_logs: {
-        Row: {
-          candidate_names: string[]
-          employer_username: string
-          id: string
-          query: string
-          searched_at: string
-          updated_at: string
-        }
-        Insert: {
-          candidate_names?: string[]
-          employer_username: string
-          id?: string
-          query: string
-          searched_at?: string
-          updated_at?: string
-        }
-        Update: {
-          candidate_names?: string[]
-          employer_username?: string
-          id?: string
-          query?: string
-          searched_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      schedule_requests: {
-        Row: {
-          availability: string
-          candidate_email: string
-          candidate_id: string
-          candidate_name: string
-          employer_email: string
-          employer_name: string | null
-          employer_username: string
-          id: string
-          requested_at: string
-        }
-        Insert: {
-          availability: string
-          candidate_email: string
-          candidate_id: string
-          candidate_name: string
-          employer_email: string
-          employer_name?: string | null
-          employer_username: string
-          id?: string
-          requested_at?: string
-        }
-        Update: {
-          availability?: string
-          candidate_email?: string
-          candidate_id?: string
-          candidate_name?: string
-          employer_email?: string
-          employer_name?: string | null
-          employer_username?: string
-          id?: string
-          requested_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "schedule_requests_candidate_id_fkey"
-            columns: ["candidate_id"]
-            referencedRelation: "candidate_data"
-            referencedColumns: ["id"]
-          }
-        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      admin_create_app_user: {
+      create_admin_user: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
+      has_role: {
         Args: {
-          p_username: string
-          p_password: string
-          p_full_name?: string | null
-          p_email?: string | null
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
-        Returns: Database["public"]["Tables"]["app_users"]["Row"]
-      }
-      admin_list_access_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["access_logs"]["Row"][]
-      }
-      admin_list_app_users: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["app_users"]["Row"][]
-      }
-      admin_list_candidate_view_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["candidate_view_logs"]["Row"][]
-      }
-      admin_list_employer_search_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"][]
-      }
-      admin_list_schedule_requests: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Tables"]["schedule_requests"]["Row"][]
-      }
-      admin_toggle_app_user_status: {
-        Args: {
-          p_user_id: string
-        }
-        Returns: Database["public"]["Tables"]["app_users"]["Row"]
-      }
-      authenticate_app_user: {
-        Args: {
-          p_identifier: string
-          p_password: string
-        }
-        Returns: Database["public"]["Tables"]["app_users"]["Row"]
-      }
-      log_employer_search: {
-        Args: {
-          p_employer_username: string
-          p_query: string
-          p_candidate_names?: string[] | null
-        }
-        Returns: Database["public"]["Tables"]["employer_search_logs"]["Row"]
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
         Returns: boolean
       }
     }
     Enums: {
-      care_setting: "domicilio" | "domicilio_geriatrico" | "hospitalario" | "urgencias"
-      user_role: "admin" | "user"
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -430,6 +228,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
