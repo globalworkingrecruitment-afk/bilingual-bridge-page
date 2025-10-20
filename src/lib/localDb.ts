@@ -411,44 +411,12 @@ export const recordCandidateView = async (
 
   await ensureSupabaseSession();
 
-  const { data: existing, error: existingError } = await supabase
-    .from("candidate_view_logs")
-    .select("*")
-    .eq("employer_username", normalizedUsername)
-    .eq("candidate_id", normalizedCandidateId)
-    .maybeSingle();
-
-  if (existingError && !isNoRowsError(existingError)) {
-    throw new Error(`[supabase] ${existingError.message}`);
-  }
-
-  const timestamp = new Date().toISOString();
-
-  if (existing) {
-    const { data, error } = await supabase
-      .from("candidate_view_logs")
-      .update({
-        candidate_name: normalizedCandidateName,
-        viewed_at: timestamp,
-      })
-      .eq("id", existing.id)
-      .select("*")
-      .single();
-
-    if (error) {
-      throw new Error(`[supabase] ${error.message}`);
-    }
-
-    return mapCandidateViewRow(data);
-  }
-
   const { data, error } = await supabase
     .from("candidate_view_logs")
     .insert({
       employer_username: normalizedUsername,
       candidate_id: normalizedCandidateId,
       candidate_name: normalizedCandidateName,
-      viewed_at: timestamp,
     })
     .select("*")
     .single();
