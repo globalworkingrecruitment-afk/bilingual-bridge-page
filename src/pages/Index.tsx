@@ -50,8 +50,24 @@ const Index = () => {
       setSearchQuery(normalizedQuery);
 
       if (currentUser?.role === "user" && normalizedQuery) {
+        const criteria = parseSearchQuery(normalizedQuery);
+        const matchedCandidates = candidates.filter((candidate: Candidate) => {
+          const candidateStatus = getCandidateStatus(candidate);
+          const matchesSelectedStatus = selectedStatus ? candidateStatus === selectedStatus : true;
+
+          if (!matchesSelectedStatus) {
+            return false;
+          }
+
+          return candidateMatchesCriteria(candidate, criteria);
+        });
+
+        const candidateNames = matchedCandidates
+          .map((candidate) => candidate.fullName.trim())
+          .filter((name) => name.length > 0);
+
         try {
-          await recordSearchQuery(currentUser.username, normalizedQuery);
+          await recordSearchQuery(currentUser.username, normalizedQuery, candidateNames);
         } catch (error) {
           const message =
             error instanceof Error
@@ -61,7 +77,7 @@ const Index = () => {
         }
       }
     },
-    [currentUser, toast],
+    [candidates, currentUser, selectedStatus, toast],
   );
 
   const scrollToCandidates = () => {
