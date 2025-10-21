@@ -636,7 +636,10 @@ export const recordScheduleRequest = async (params: {
 
 export const getEmployerInteractions = async (): Promise<EmployerInteractionLog[]> => {
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_employer_interactions"),
+    supabase
+      .from("employer_interactions")
+      .select("*")
+      .order("occurred_at", { ascending: false }),
   );
 
   if (error) {
