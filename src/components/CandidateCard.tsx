@@ -190,6 +190,15 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
     resetScheduleState();
     setIsScheduleDialogOpen(true);
+
+    if (currentUser?.role === "user") {
+      void recordEmployerInteraction(currentUser.username, "schedule_dialog_opened", {
+        candidate_id: candidate.id,
+        candidate_name: candidate.fullName,
+      }).catch((interactionError) => {
+        console.warn("No se pudo registrar la apertura del diálogo de agenda", interactionError);
+      });
+    }
   };
 
   const closeScheduleDialog = () => {

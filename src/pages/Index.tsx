@@ -39,9 +39,19 @@ const Index = () => {
 
   const content = language === "en" ? englishContent : norwegianContent;
 
-  const toggleLanguage = () => {
-    setLanguage(prev => (prev === "en" ? "no" : "en"));
-  };
+  const toggleLanguage = useCallback(() => {
+    const nextLanguage = language === "en" ? "no" : "en";
+    setLanguage(nextLanguage);
+
+    if (currentUser?.role === "user") {
+      void recordEmployerInteraction(currentUser.username, "language_toggled", {
+        previous_language: language,
+        next_language: nextLanguage,
+      }).catch((interactionError) => {
+        console.warn("No se pudo registrar el cambio de idioma", interactionError);
+      });
+    }
+  }, [currentUser, language]);
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -86,9 +96,21 @@ const Index = () => {
     [candidates, currentUser, selectedStatus, toast],
   );
 
-  const scrollToCandidates = () => {
+  const scrollToCandidates = useCallback(() => {
     candidatesSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
+
+  const handleHeroPrimaryAction = useCallback(() => {
+    scrollToCandidates();
+
+    if (currentUser?.role === "user") {
+      void recordEmployerInteraction(currentUser.username, "hero_cta_clicked", {
+        action: "scroll_to_candidates",
+      }).catch((interactionError) => {
+        console.warn("No se pudo registrar el clic en el CTA principal", interactionError);
+      });
+    }
+  }, [currentUser, scrollToCandidates]);
 
   const experienceSections = useMemo(() => {
     if (candidates.length === 0) {
@@ -159,9 +181,25 @@ const Index = () => {
     });
   }, [candidates, searchCriteria, selectedStatus]);
 
-  const handleSelectStatus = (status: string | null) => {
-    setSelectedStatus(prev => (prev === status ? null : status));
-  };
+  const handleSelectStatus = useCallback(
+    (status: string | null) => {
+      setSelectedStatus((previousStatus) => {
+        const nextStatus = previousStatus === status ? null : status;
+
+        if (currentUser?.role === "user") {
+          void recordEmployerInteraction(currentUser.username, "status_filter_changed", {
+            previous_status: previousStatus ?? "all",
+            next_status: nextStatus ?? "all",
+          }).catch((interactionError) => {
+            console.warn("No se pudo registrar el cambio de filtro", interactionError);
+          });
+        }
+
+        return nextStatus;
+      });
+    },
+    [currentUser],
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -202,7 +240,7 @@ const Index = () => {
         </div>
       </header>
 
-      <Hero content={content.hero} onPrimaryAction={scrollToCandidates} />
+      <Hero content={content.hero} onPrimaryAction={handleHeroPrimaryAction} />
       <Stats content={content.stats} />
       
       <section ref={candidatesSectionRef} className="py-16 px-6">
