@@ -1,6 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database, Json, TablesInsert } from "@/integrations/supabase/types";
 import { ensureSupabaseSession } from "@/lib/supabase-auth";
 import type {
   AccessLog,
@@ -531,29 +531,33 @@ export const getCandidateViewsByUser = async (): Promise<Record<string, Candidat
   );
 };
 
-export const recordCandidateView = async (
-  employerUsername: string,
-  candidateId: string,
-  candidateName: string,
-): Promise<CandidateViewLog | null> => {
-  const normalizedUsername = employerUsername?.trim();
-  const normalizedCandidateId = candidateId?.trim();
-  const normalizedCandidateName = candidateName?.trim();
+export const recordCandidateView = async (params: {
+  employerId?: string;
+  employerUsername: string;
+  candidateId: string;
+  candidateName: string;
+}): Promise<CandidateViewLog | null> => {
+  const normalizedEmployerId = params.employerId?.trim();
+  const normalizedUsername = params.employerUsername?.trim();
+  const normalizedCandidateId = params.candidateId?.trim();
+  const normalizedCandidateName = params.candidateName?.trim();
 
   if (!normalizedUsername || !normalizedCandidateId || !normalizedCandidateName) {
     return null;
   }
 
+  const insertPayload: TablesInsert<"candidate_view_logs"> = {
+    employer_username: normalizedUsername,
+    candidate_id: normalizedCandidateId,
+    candidate_name: normalizedCandidateName,
+  };
+
+  if (normalizedEmployerId) {
+    insertPayload.employer_id = normalizedEmployerId;
+  }
+
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase
-      .from("candidate_view_logs")
-      .insert({
-        employer_username: normalizedUsername,
-        candidate_id: normalizedCandidateId,
-        candidate_name: normalizedCandidateName,
-      })
-      .select("*")
-      .single(),
+    supabase.from("candidate_view_logs").insert(insertPayload).select("*").single(),
   );
 
   if (error) {
@@ -577,6 +581,7 @@ export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
 };
 
 export const recordScheduleRequest = async (params: {
+  employerId?: string;
   employerUsername: string;
   employerEmail: string;
   candidateId: string;
@@ -585,6 +590,7 @@ export const recordScheduleRequest = async (params: {
   availability: string;
   employerName?: string;
 }): Promise<ScheduleRequestLog | null> => {
+  const normalizedEmployerId = params.employerId?.trim();
   const normalizedEmployerUsername = params.employerUsername?.trim();
   const normalizedEmployerEmail = params.employerEmail?.trim();
   const normalizedCandidateId = params.candidateId?.trim();
@@ -603,20 +609,22 @@ export const recordScheduleRequest = async (params: {
     return null;
   }
 
+  const insertPayload: TablesInsert<"schedule_requests"> = {
+    employer_username: normalizedEmployerUsername,
+    employer_email: normalizedEmployerEmail,
+    employer_name: params.employerName?.trim() || null,
+    candidate_id: normalizedCandidateId,
+    candidate_name: normalizedCandidateName,
+    candidate_email: normalizedCandidateEmail,
+    availability: normalizedAvailability,
+  };
+
+  if (normalizedEmployerId) {
+    insertPayload.employer_id = normalizedEmployerId;
+  }
+
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase
-      .from("schedule_requests")
-      .insert({
-        employer_username: normalizedEmployerUsername,
-        employer_email: normalizedEmployerEmail,
-        employer_name: params.employerName?.trim() || null,
-        candidate_id: normalizedCandidateId,
-        candidate_name: normalizedCandidateName,
-        candidate_email: normalizedCandidateEmail,
-        availability: normalizedAvailability,
-      })
-      .select("*")
-      .single(),
+    supabase.from("schedule_requests").insert(insertPayload).select("*").single(),
   );
 
   if (error) {

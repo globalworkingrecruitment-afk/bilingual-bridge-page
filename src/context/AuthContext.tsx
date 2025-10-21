@@ -97,7 +97,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("El usuario se encuentra deshabilitado.");
     }
 
-    const sessionUser: SessionUser = { username: matchedUser.username, role: "user" };
+    const sessionUser: SessionUser = {
+      id: matchedUser.id,
+      username: matchedUser.username,
+      role: "user",
+    };
     setCurrentUser(sessionUser);
     persistSession(sessionUser);
     await logAccessSafely(sessionUser);

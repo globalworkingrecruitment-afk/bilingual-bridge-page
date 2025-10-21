@@ -141,6 +141,7 @@ export type Database = {
       candidate_view_logs: {
         Row: {
           id: string
+          employer_id: string
           employer_username: string
           candidate_id: string
           candidate_name: string
@@ -148,6 +149,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          employer_id?: string
           employer_username: string
           candidate_id: string
           candidate_name: string
@@ -155,6 +157,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          employer_id?: string
           employer_username?: string
           candidate_id?: string
           candidate_name?: string
@@ -229,6 +232,7 @@ export type Database = {
       schedule_requests: {
         Row: {
           id: string
+          employer_id: string
           employer_username: string
           employer_email: string
           employer_name: string | null
@@ -240,6 +244,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          employer_id?: string
           employer_username: string
           employer_email: string
           employer_name?: string | null
@@ -251,6 +256,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          employer_id?: string
           employer_username?: string
           employer_email?: string
           employer_name?: string | null
