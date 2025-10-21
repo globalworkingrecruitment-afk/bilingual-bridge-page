@@ -78,8 +78,8 @@ export type Database = {
           formacion_no: string | null
           profesion_en: string | null
           profesion_no: string | null
-          idiomas_en: string[]
-          idiomas_no: string[]
+          idiomas_en: string
+          idiomas_no: string
           carta_resumen_en: string | null
           carta_en: string | null
           carta_resumen_no: string | null
@@ -101,8 +101,8 @@ export type Database = {
           formacion_no?: string | null
           profesion_en?: string | null
           profesion_no?: string | null
-          idiomas_en?: string[]
-          idiomas_no?: string[]
+          idiomas_en?: string
+          idiomas_no?: string
           carta_resumen_en?: string | null
           carta_en?: string | null
           carta_resumen_no?: string | null
@@ -124,8 +124,8 @@ export type Database = {
           formacion_no?: string | null
           profesion_en?: string | null
           profesion_no?: string | null
-          idiomas_en?: string[]
-          idiomas_no?: string[]
+          idiomas_en?: string
+          idiomas_no?: string
           carta_resumen_en?: string | null
           carta_en?: string | null
           carta_resumen_no?: string | null
@@ -141,7 +141,6 @@ export type Database = {
       candidate_view_logs: {
         Row: {
           id: string
-          employer_id: string
           employer_username: string
           candidate_id: string
           candidate_name: string
@@ -149,7 +148,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          employer_id?: string
           employer_username: string
           candidate_id: string
           candidate_name: string
@@ -157,13 +155,19 @@ export type Database = {
         }
         Update: {
           id?: string
-          employer_id?: string
           employer_username?: string
           candidate_id?: string
           candidate_name?: string
           viewed_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candidate_view_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            referencedRelation: "candidate_data"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       employer_interactions: {
         Row: {
@@ -198,7 +202,6 @@ export type Database = {
       employer_search_logs: {
         Row: {
           id: string
-          employer_id: string
           employer_username: string
           query: string
           candidate_names: string[]
@@ -207,7 +210,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          employer_id?: string
           employer_username: string
           query: string
           candidate_names?: string[]
@@ -216,7 +218,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          employer_id?: string
           employer_username?: string
           query?: string
           candidate_names?: string[]
@@ -228,7 +229,6 @@ export type Database = {
       schedule_requests: {
         Row: {
           id: string
-          employer_id: string
           employer_username: string
           employer_email: string
           employer_name: string | null
@@ -240,7 +240,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          employer_id?: string
           employer_username: string
           employer_email: string
           employer_name?: string | null
@@ -252,7 +251,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          employer_id?: string
           employer_username?: string
           employer_email?: string
           employer_name?: string | null
@@ -262,7 +260,14 @@ export type Database = {
           availability?: string
           requested_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_requests_candidate_id_fkey"
+            columns: ["candidate_id"]
+            referencedRelation: "candidate_data"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
