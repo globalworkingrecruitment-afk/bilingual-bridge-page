@@ -143,7 +143,12 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
 
       void (async () => {
         try {
-          await recordCandidateView(currentUser.username, candidate.id, candidate.fullName);
+          await recordCandidateView({
+            employerId: currentUser.id,
+            employerUsername: currentUser.username,
+            candidateId: candidate.id,
+            candidateName: candidate.fullName,
+          });
           await recordEmployerInteraction(currentUser.username, "candidate_profile_viewed", {
             candidate_id: candidate.id,
             candidate_name: candidate.fullName,
@@ -320,6 +325,7 @@ export const CandidateCard = ({ candidate, content, locale }: CandidateCardProps
       }
 
       await recordScheduleRequest({
+        employerId: currentUser.id,
         employerUsername: currentUser.username,
         employerEmail: normalizedEmployerEmail,
         employerName: employerProfile?.fullName,

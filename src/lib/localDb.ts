@@ -1,6 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database, Json, TablesInsert } from "@/integrations/supabase/types";
 import { ensureSupabaseSession } from "@/lib/supabase-auth";
 import type {
   AccessLog,
@@ -48,6 +48,56 @@ type MaybeSingleError = PostgrestError & { code: string };
 
 const isNoRowsError = (error: PostgrestError | null): error is MaybeSingleError => {
   return Boolean(error && (error as MaybeSingleError).code === "PGRST116");
+};
+
+const isMissingRpcError = (error: PostgrestError | null, functionName: string): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  if (error.code?.toUpperCase() === "PGRST100") {
+    return true;
+  }
+
+  const haystack = [error.message, error.details, error.hint]
+    .filter((part): part is string => typeof part === "string" && part.length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  if (!haystack) {
+    return false;
+  }
+
+  const normalizedFunction = functionName.toLowerCase();
+  return (
+    haystack.includes(`function ${normalizedFunction}`) &&
+    (haystack.includes("does not exist") ||
+      haystack.includes("not found") ||
+      haystack.includes("unknown"))
+  );
+};
+
+const fetchAdminRows = async <T>(
+  rpcName: string,
+  fallback: () => Promise<{ data: T[] | null; error: PostgrestError | null }>,
+): Promise<T[]> => {
+  const rpcResponse = await executeWithAuthRetry(() => supabase.rpc(rpcName));
+
+  if (!rpcResponse.error) {
+    return rpcResponse.data ?? [];
+  }
+
+  if (!isMissingRpcError(rpcResponse.error, rpcName)) {
+    throw new Error(`[supabase] ${rpcResponse.error.message}`);
+  }
+
+  const fallbackResponse = await executeWithAuthRetry(fallback);
+
+  if (fallbackResponse.error) {
+    throw new Error(`[supabase] ${fallbackResponse.error.message}`);
+  }
+
+  return fallbackResponse.data ?? [];
 };
 
 const sanitizeIlikeValue = (value: string) =>
@@ -124,7 +174,6 @@ const mapAccessLogRow = (row: AccessLogRow): AccessLog => ({
 
 const mapCandidateViewRow = (row: CandidateViewRow): CandidateViewLog => ({
   id: row.id,
-  employerId: row.employer_id,
   employerUsername: row.employer_username,
   candidateId: row.candidate_id,
   candidateName: row.candidate_name,
@@ -143,7 +192,6 @@ const mapInteractionLogRow = (row: InteractionLogRow): EmployerInteractionLog =>
 
 const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => ({
   id: row.id,
-  employerId: row.employer_id,
   employerUsername: row.employer_username,
   employerEmail: row.employer_email,
   employerName: row.employer_name ?? undefined,
@@ -156,7 +204,6 @@ const mapScheduleRequestRow = (row: ScheduleRequestRow): ScheduleRequestLog => (
 
 const mapSearchLogRow = (row: SearchLogRow): SearchLog => ({
   id: row.id,
-  employerId: row.employer_id,
   employerUsername: row.employer_username,
   query: row.query,
   candidateNames: row.candidate_names ?? [],
@@ -500,15 +547,16 @@ export const addAccessLog = async (username: string, role: UserRole): Promise<Ac
 };
 
 export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_candidate_view_logs"),
+  const rows = await fetchAdminRows<CandidateViewRow>(
+    "admin_list_candidate_view_logs",
+    () =>
+      supabase
+        .from("candidate_view_logs")
+        .select("*")
+        .order("viewed_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapCandidateViewRow);
+  const mapped = rows.map(mapCandidateViewRow);
   return sortByDesc(mapped, (view) => view.viewedAt);
 };
 
@@ -534,29 +582,33 @@ export const getCandidateViewsByUser = async (): Promise<Record<string, Candidat
   );
 };
 
-export const recordCandidateView = async (
-  employerUsername: string,
-  candidateId: string,
-  candidateName: string,
-): Promise<CandidateViewLog | null> => {
-  const normalizedUsername = employerUsername?.trim();
-  const normalizedCandidateId = candidateId?.trim();
-  const normalizedCandidateName = candidateName?.trim();
+export const recordCandidateView = async (params: {
+  employerId?: string;
+  employerUsername: string;
+  candidateId: string;
+  candidateName: string;
+}): Promise<CandidateViewLog | null> => {
+  const normalizedEmployerId = params.employerId?.trim();
+  const normalizedUsername = params.employerUsername?.trim();
+  const normalizedCandidateId = params.candidateId?.trim();
+  const normalizedCandidateName = params.candidateName?.trim();
 
   if (!normalizedUsername || !normalizedCandidateId || !normalizedCandidateName) {
     return null;
   }
 
+  const insertPayload: TablesInsert<"candidate_view_logs"> = {
+    employer_username: normalizedUsername,
+    candidate_id: normalizedCandidateId,
+    candidate_name: normalizedCandidateName,
+  };
+
+  if (normalizedEmployerId) {
+    insertPayload.employer_id = normalizedEmployerId;
+  }
+
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase
-      .from("candidate_view_logs")
-      .insert({
-        employer_username: normalizedUsername,
-        candidate_id: normalizedCandidateId,
-        candidate_name: normalizedCandidateName,
-      })
-      .select("*")
-      .single(),
+    supabase.from("candidate_view_logs").insert(insertPayload).select("*").single(),
   );
 
   if (error) {
@@ -567,19 +619,21 @@ export const recordCandidateView = async (
 };
 
 export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_schedule_requests"),
+  const rows = await fetchAdminRows<ScheduleRequestRow>(
+    "admin_list_schedule_requests",
+    () =>
+      supabase
+        .from("schedule_requests")
+        .select("*")
+        .order("requested_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapScheduleRequestRow);
+  const mapped = rows.map(mapScheduleRequestRow);
   return sortByDesc(mapped, (request) => request.requestedAt);
 };
 
 export const recordScheduleRequest = async (params: {
+  employerId?: string;
   employerUsername: string;
   employerEmail: string;
   candidateId: string;
@@ -588,6 +642,7 @@ export const recordScheduleRequest = async (params: {
   availability: string;
   employerName?: string;
 }): Promise<ScheduleRequestLog | null> => {
+  const normalizedEmployerId = params.employerId?.trim();
   const normalizedEmployerUsername = params.employerUsername?.trim();
   const normalizedEmployerEmail = params.employerEmail?.trim();
   const normalizedCandidateId = params.candidateId?.trim();
@@ -606,20 +661,22 @@ export const recordScheduleRequest = async (params: {
     return null;
   }
 
+  const insertPayload: TablesInsert<"schedule_requests"> = {
+    employer_username: normalizedEmployerUsername,
+    employer_email: normalizedEmployerEmail,
+    employer_name: params.employerName?.trim() || null,
+    candidate_id: normalizedCandidateId,
+    candidate_name: normalizedCandidateName,
+    candidate_email: normalizedCandidateEmail,
+    availability: normalizedAvailability,
+  };
+
+  if (normalizedEmployerId) {
+    insertPayload.employer_id = normalizedEmployerId;
+  }
+
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase
-      .from("schedule_requests")
-      .insert({
-        employer_username: normalizedEmployerUsername,
-        employer_email: normalizedEmployerEmail,
-        employer_name: params.employerName?.trim() || null,
-        candidate_id: normalizedCandidateId,
-        candidate_name: normalizedCandidateName,
-        candidate_email: normalizedCandidateEmail,
-        availability: normalizedAvailability,
-      })
-      .select("*")
-      .single(),
+    supabase.from("schedule_requests").insert(insertPayload).select("*").single(),
   );
 
   if (error) {
@@ -631,7 +688,10 @@ export const recordScheduleRequest = async (params: {
 
 export const getEmployerInteractions = async (): Promise<EmployerInteractionLog[]> => {
   const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_employer_interactions"),
+    supabase
+      .from("employer_interactions")
+      .select("*")
+      .order("occurred_at", { ascending: false }),
   );
 
   if (error) {
@@ -667,15 +727,16 @@ export const getEmployerInteractionsByUser = async (): Promise<
 };
 
 export const getSearchLogs = async (): Promise<SearchLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_employer_search_logs"),
+  const rows = await fetchAdminRows<SearchLogRow>(
+    "admin_list_employer_search_logs",
+    () =>
+      supabase
+        .from("employer_search_logs")
+        .select("*")
+        .order("searched_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapSearchLogRow);
+  const mapped = rows.map(mapSearchLogRow);
   return sortByDesc(mapped, (log) => log.searchedAt);
 };
 

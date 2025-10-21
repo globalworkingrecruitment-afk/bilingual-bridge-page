@@ -1,6 +1,7 @@
 export type UserRole = "admin" | "user";
 
 export interface SessionUser {
+  id?: string;
   username: string;
   role: UserRole;
 }
@@ -24,7 +25,6 @@ export interface AccessLog {
 
 export interface CandidateViewLog {
   id: string;
-  employerId: string;
   employerUsername: string;
   candidateId: string;
   candidateName: string;
@@ -33,7 +33,6 @@ export interface CandidateViewLog {
 
 export interface SearchLog {
   id: string;
-  employerId: string;
   employerUsername: string;
   query: string;
   candidateNames: string[];
