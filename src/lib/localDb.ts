@@ -50,6 +50,56 @@ const isNoRowsError = (error: PostgrestError | null): error is MaybeSingleError 
   return Boolean(error && (error as MaybeSingleError).code === "PGRST116");
 };
 
+const isMissingRpcError = (error: PostgrestError | null, functionName: string): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  if (error.code?.toUpperCase() === "PGRST100") {
+    return true;
+  }
+
+  const haystack = [error.message, error.details, error.hint]
+    .filter((part): part is string => typeof part === "string" && part.length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  if (!haystack) {
+    return false;
+  }
+
+  const normalizedFunction = functionName.toLowerCase();
+  return (
+    haystack.includes(`function ${normalizedFunction}`) &&
+    (haystack.includes("does not exist") ||
+      haystack.includes("not found") ||
+      haystack.includes("unknown"))
+  );
+};
+
+const fetchAdminRows = async <T>(
+  rpcName: string,
+  fallback: () => Promise<{ data: T[] | null; error: PostgrestError | null }>,
+): Promise<T[]> => {
+  const rpcResponse = await executeWithAuthRetry(() => supabase.rpc(rpcName));
+
+  if (!rpcResponse.error) {
+    return rpcResponse.data ?? [];
+  }
+
+  if (!isMissingRpcError(rpcResponse.error, rpcName)) {
+    throw new Error(`[supabase] ${rpcResponse.error.message}`);
+  }
+
+  const fallbackResponse = await executeWithAuthRetry(fallback);
+
+  if (fallbackResponse.error) {
+    throw new Error(`[supabase] ${fallbackResponse.error.message}`);
+  }
+
+  return fallbackResponse.data ?? [];
+};
+
 const sanitizeIlikeValue = (value: string) =>
   value
     .replace(/[%_]/g, (character) => `\\${character}`)
@@ -497,15 +547,16 @@ export const addAccessLog = async (username: string, role: UserRole): Promise<Ac
 };
 
 export const getCandidateViews = async (): Promise<CandidateViewLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_candidate_view_logs"),
+  const rows = await fetchAdminRows<CandidateViewRow>(
+    "admin_list_candidate_view_logs",
+    () =>
+      supabase
+        .from("candidate_view_logs")
+        .select("*")
+        .order("viewed_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapCandidateViewRow);
+  const mapped = rows.map(mapCandidateViewRow);
   return sortByDesc(mapped, (view) => view.viewedAt);
 };
 
@@ -568,15 +619,16 @@ export const recordCandidateView = async (params: {
 };
 
 export const getScheduleRequests = async (): Promise<ScheduleRequestLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_schedule_requests"),
+  const rows = await fetchAdminRows<ScheduleRequestRow>(
+    "admin_list_schedule_requests",
+    () =>
+      supabase
+        .from("schedule_requests")
+        .select("*")
+        .order("requested_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapScheduleRequestRow);
+  const mapped = rows.map(mapScheduleRequestRow);
   return sortByDesc(mapped, (request) => request.requestedAt);
 };
 
@@ -675,15 +727,16 @@ export const getEmployerInteractionsByUser = async (): Promise<
 };
 
 export const getSearchLogs = async (): Promise<SearchLog[]> => {
-  const { data, error } = await executeWithAuthRetry(() =>
-    supabase.rpc("admin_list_employer_search_logs"),
+  const rows = await fetchAdminRows<SearchLogRow>(
+    "admin_list_employer_search_logs",
+    () =>
+      supabase
+        .from("employer_search_logs")
+        .select("*")
+        .order("searched_at", { ascending: false }),
   );
 
-  if (error) {
-    throw new Error(`[supabase] ${error.message}`);
-  }
-
-  const mapped = (data ?? []).map(mapSearchLogRow);
+  const mapped = rows.map(mapSearchLogRow);
   return sortByDesc(mapped, (log) => log.searchedAt);
 };
 
